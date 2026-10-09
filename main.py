@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from models import TaskRequest, RoutingResponse
+from router import router_graph
 
 app = FastAPI(
     title="PromptRouter Engine",
@@ -9,20 +10,20 @@ app = FastAPI(
 
 @app.get("/health")
 async def health_check():
-    """Simple health check to ensure the engine is running."""
     return {"status": "healthy", "engine": "PromptRouter"}
 
 @app.post("/api/route", response_model=RoutingResponse)
 async def route_task(request: TaskRequest):
     """
-    Main endpoint to route tasks. 
-    I'll integrate my LangGraph workflow here soon to handle the actual LLM routing logic.
+    Runs the prompt through my LangGraph pipeline:
+    classify → pick model → generate response
     """
-    # Just returning a static response for now to test the API structure
+    result = router_graph.invoke({"prompt": request.prompt})
+
     return RoutingResponse(
         original_prompt=request.prompt,
-        routed_model="test-model",
-        response_text="Routing logic is under construction!",
-        tokens_used=0,
-        estimated_cost=0.0
+        routed_model=result.get("selected_model", "unknown"),
+        response_text=result.get("response_text", ""),
+        tokens_used=result.get("tokens_used", 0),
+        estimated_cost=result.get("estimated_cost", 0.0),
     )
