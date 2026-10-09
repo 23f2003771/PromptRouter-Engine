@@ -7,7 +7,9 @@ class TaskRequest(BaseModel):
     
 class RoutingResponse(BaseModel):
     original_prompt: str
-    routed_model: str = Field(..., description="The name of the LLM chosen by the engine.")
-    response_text: str = Field(..., description="The actual response from the chosen LLM.")
+    routed_model: str = Field(..., description="The name of the LLM chosen by my engine.")
+    response_text: str = Field(..., description="The response from the selected LLM.")
     tokens_used: Optional[int] = None
     estimated_cost: Optional[float] = None
+    cost_saved: Optional[float] = Field(default=None, description="Money saved compared to always calling GPT-4o.")
+    latency_ms: Optional[float] = Field(default=None, description="Routing and response latency in milliseconds.")
