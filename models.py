@@ -11,6 +11,6 @@ class RoutingResponse(BaseModel):
     response_text: str = Field(..., description="The response from the selected LLM or safety guard.")
     tokens_used: Optional[int] = None
     estimated_cost: Optional[float] = None
-    cost_saved: Optional[float] = Field(default=None, description="Money saved compared to always calling GPT-4o.")
+    cost_saved: Optional[float] = Field(default=None, description="Money saved compared to baseline flagship model.")
     latency_ms: Optional[float] = Field(default=None, description="Routing and response latency in milliseconds.")
     safety_score: Optional[float] = Field(default=None, description="Prompt injection risk score on 1-5 scale (<=2 is safe, >2 blocked).")

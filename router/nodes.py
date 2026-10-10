@@ -123,7 +123,7 @@ def select_model(state: RouterState) -> RouterState:
 def generate_response(state: RouterState) -> RouterState:
     """
     Simulates response generation and calculates exact token counts,
-    estimated cost, and how much money I saved vs always using GPT-4o / Flagship.
+    estimated cost, and how much money is saved vs always calling the flagship baseline.
     """
     model = state.get("selected_model", "gemini-2.5-flash-lite")
     prompt = state.get("prompt", "")

@@ -1,6 +1,9 @@
 {
   "dataset": "databricks-dolly-15k",
   "tasks_evaluated": 500,
+  "sampling_method": "sequential",
+  "mode": "live_typesafe_api",
+  "api_calls_made": 1000,
   "throughput_queries_per_sec": 1.1,
   "average_routing_latency_ms": 905.81,
   "total_tokens_processed": 32424,

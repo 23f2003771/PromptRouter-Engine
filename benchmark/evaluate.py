@@ -117,7 +117,8 @@ def run_benchmark(num_samples: int = 1000, live_api: bool = False, use_random: b
         "dataset": "databricks-dolly-15k",
         "tasks_evaluated": total_tasks,
         "sampling_method": "random" if use_random else "sequential",
-        "mode": "live_api" if live_api else "high_throughput",
+        "mode": "live_typesafe_api" if live_api else "high_throughput_fastpath",
+        "api_calls_made": total_tasks * 2 if live_api else 0,
         "total_wall_time_seconds": round(wall_time_sec, 2),
         "throughput_queries_per_sec": throughput_qps,
         "average_routing_latency_ms": avg_latency_ms,
@@ -140,7 +141,7 @@ def run_benchmark(num_samples: int = 1000, live_api: bool = False, use_random: b
     with open(default_file, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 
-    # print clean, resume-ready report
+    # print benchmark evaluation summary report
     print("\n" + "=" * 65, flush=True)
     print("           PROMPTROUTER BENCHMARK EVALUATION REPORT           ", flush=True)
     print("=" * 65, flush=True)

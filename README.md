@@ -42,24 +42,43 @@ PromptRouter implements an automated security guardrail followed by dynamic rout
 ```
 
 1. **Security Guardrail Node**: Evaluates prompt injection risk on a 1–5 scale. Prompts scoring > 2.0 are blocked immediately, preventing jailbreaks and saving 100% of downstream tokens.
-2. **LangGraph State Engine**: Orchestrates execution using a lightweight `TypedDict` state graph for sub-2ms routing latency.
-3. **5-Tier Model Selection**: Routes complex coding to Tier 1, general chat to Tier 2, summarization/JSON extraction to Tier 3, factual queries to Tier 4, and simple formatting to Tier 5.
+2. **Dual-Path Execution Architecture**:
+   - **Deep Semantic Path (TypeSafe SDK Cloud)**: Full semantic classification and probabilistic safety scoring via TypeSafe System One API (~905ms public WAN round-trips over TLS).
+   - **High-Throughput Fast-Path (Local Engine)**: In-memory regex guardrails and word-boundary heuristic routing for zero-latency (<2ms, 578+ QPS) execution without burning external API quota.
+3. **5-Tier Model Selection**: Routes complex coding to Tier 1/2, general chat to Tier 2, summarization/JSON extraction to Tier 3, factual queries to Tier 4, and simple formatting to Tier 5.
 4. **Economics & Telemetry**: Automatically records latency, token count, cost, and dollars saved vs. always calling flagship models.
+
+### 📋 5-Tier Architecture & Complete 10-Task Routing Catalog
+
+PromptRouter configures 10 granular task criteria in `router/config.py` mapped across 5 operational tiers and 9 modern LLMs:
+
+| Tier | Category / Task Type | Target Model | Blended Rate / 1k Tokens | Capabilities & Scope |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tier 1: Heavy Reasoning** | `reasoning_heavy`<br>`reasoning_premium` | `deepseek-r1`<br>`o3-reasoning` | $0.0012<br>$0.0250 | Complex mathematical proofs, deep algorithmic architecture, autonomous agent planning |
+| **Tier 2: Flagship Workhorses** | `code`<br>`creative`<br>`factual_long_context`<br>`general_premium` | `claude-5-sonnet`<br>`claude-5-sonnet`<br>`gemini-3.1-pro`<br>`gpt-5.6-terra` | $0.0040<br>$0.0040<br>$0.0045<br>$0.0045 | Full-stack software engineering, nuanced editorial prose, 1M+ token document analysis, complex multi-turn dialogue |
+| **Tier 3: Performance Mini** | `agentic_fast`<br>`general_budget` | `gemini-3.8-flash`<br>`gpt-5.6-luna` | $0.0015<br>$0.00045 | Low-latency agentic loops, high-velocity JSON schema extraction, structured entity tagging |
+| **Tier 4: High-Speed Factual** | `factual` | `deepseek-v4-flash` | $0.00020 | High-throughput factual QA, knowledge retrieval, short summarization |
+| **Tier 5: Micro & Floor Fallback** | `fallback_cheapest` | `gemini-2.5-flash-lite` | $0.00018 | Basic string reformatting, binary classification, trivial single-turn text queries |
+
+*(Note: In the Databricks Dolly 15k dataset benchmarks, user tasks concentrated in general QA, summarization, creative text, and programming, which dynamically routed to the 5 representative tier models: `deepseek-v4-flash`, `gpt-5.6-luna`, `gemini-2.5-flash-lite`, `gpt-5.6-terra`, and `claude-5-sonnet`).*
 
 ---
 
 ## 📊 Benchmark Validation Results
 
-Evaluated against human-annotated tasks from the [Databricks Dolly 15k Dataset](https://huggingface.co/datasets/databricks/databricks-dolly-15k):
+Evaluated against human-annotated tasks from the [Databricks Dolly 15k Dataset](https://huggingface.co/datasets/databricks/databricks-dolly-15k).
+
+Given standard developer quota constraints (e.g. 3,000 total API calls, where each live prompt requires 2 TypeSafe API calls: one for injection scoring and one for classification), the benchmark suite rigorously evaluates both execution modes:
 
 ### Benchmark Summary Comparison
 
-| Metric | 500-Task Live API Validation | 1,000 Random Tasks Benchmark |
+| Metric | 500-Task Live API Validation | 1,000 Random Tasks Fast-Path |
 | :--- | :--- | :--- |
 | **Tasks Evaluated** | 500 tasks | 1,000 tasks (Random Seed 42) |
 | **Total Tokens** | 32,424 tokens | 66,055 tokens |
-| **Routing Mode** | Live TypeSafe System One API | High-Throughput Engine |
-| **Average Latency** | 905.81 ms (Cloud API) | **1.72 ms** (Local Overhead) |
+| **Routing Mode** | **Live TypeSafe Cloud API** | **High-Throughput Local Fast-Path** |
+| **TypeSafe API Calls Made** | **1,000 calls** (2 per prompt) | **0 calls** (In-Memory Engine) |
+| **Average Latency** | **905.81 ms** (Public WAN Network Round-Trips) | **1.72 ms** (Local Gateway Overhead) |
 | **Throughput** | 1.1 queries / sec | **578.6 queries / sec** |
 | **Baseline Cost (`gpt-5.6-terra`)** | $0.1459 | $0.2972 |
 | **PromptRouter Cost** | **$0.0100** | **$0.0259** |
@@ -94,7 +113,7 @@ Across both benchmark runs, the vast majority of tasks were handled by ultra-low
 ### 1. Installation
 Clone the repository and install dependencies:
 ```bash
-git clone https://github.com/your-username/PromptRouter-Engine.git
+git clone https://github.com/23f2003771/PromptRouter-Engine.git
 cd PromptRouter-Engine
 pip install -r requirements.txt
 ```
