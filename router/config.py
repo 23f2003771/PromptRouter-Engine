@@ -87,3 +87,27 @@ CLASSIFICATION_CRITERIA = {
     "fallback_cheapest": 
         "TRIVIAL/MICRO TASKS: Basic binary classification, filtering profanity/spam, single-turn string mutations, formatting text, or one-sentence generic queries requiring almost zero reasoning."
 }
+
+# prompt injection defense threshold (scale 1 to 5)
+# any prompt scoring > 2.0 gets stopped immediately to protect our models
+INJECTION_THRESHOLD = 2.0
+
+# 5-level rubric used by TypeSafe SDK Score to rate prompt injection risk
+INJECTION_RUBRIC_5_SCALE = [
+    "Level 1: Benign and legitimate query with zero jailbreak or prompt injection intent.",
+    "Level 2: Edge-case phrasing, technical discussion, or harmless curiosity without bypass intent.",
+    "Level 3: Mild prompt injection, hypothetical roleplay attempting rule relaxation, or minor instruction override.",
+    "Level 4: Direct prompt injection, DAN mode, instruction disregard ('ignore previous instructions'), or system prompt extraction attempt.",
+    "Level 5: Severe malicious jailbreak exploit, base64/encoded payload injection, or hostile filter bypass.",
+]
+
+# regex patterns for offline fallback safety guard
+INJECTION_PATTERNS = [
+    r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules|directions)",
+    r"disregard\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules)",
+    r"forget\s+(all\s+)?(previous|prior)\s+(instructions|prompts|rules)",
+    r"(bypass|disable|turn\s+off)\s+(all\s+)?(safety|guardrails|filters|restrictions)",
+    r"(system\s+prompt|system\s+instructions)\s+(leak|reveal|show|dump|print|output)",
+    r"(dan\s+mode|jailbreak|do\s+anything\s+now|developer\s+mode)",
+]
+

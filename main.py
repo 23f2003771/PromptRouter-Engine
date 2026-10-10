@@ -17,7 +17,7 @@ async def health_check():
 async def route_task(request: TaskRequest):
     """
     Runs the incoming prompt through my LangGraph pipeline:
-    classify (TypeSafe SDK / heuristics) → select model → generate & calculate cost/savings
+    safety guard (1-5 scale) → classify → select model → generate & calculate cost/savings
     """
     start_time = time.perf_counter()
     result = router_graph.invoke({"prompt": request.prompt})
@@ -25,10 +25,11 @@ async def route_task(request: TaskRequest):
 
     return RoutingResponse(
         original_prompt=request.prompt,
-        routed_model=result.get("selected_model", "gemini-flash"),
+        routed_model=result.get("selected_model", "blocked"),
         response_text=result.get("response_text", ""),
         tokens_used=result.get("tokens_used", 0),
         estimated_cost=result.get("estimated_cost", 0.0),
         cost_saved=result.get("cost_saved", 0.0),
         latency_ms=duration_ms,
+        safety_score=result.get("safety_score", 1.0),
     )

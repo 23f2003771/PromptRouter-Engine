@@ -5,6 +5,9 @@ from router.config import (
     MODEL_MAP,
     MODEL_COSTS_PER_1K,
     CLASSIFICATION_CRITERIA,
+    INJECTION_THRESHOLD,
+    INJECTION_RUBRIC_5_SCALE,
+    INJECTION_PATTERNS,
 )
 
 # keywords I use as a quick fallback if no API key is provided or network is offline
@@ -13,6 +16,65 @@ TASK_KEYWORDS = {
     "creative": ["write", "story", "poem", "essay", "blog", "creative", "compose", "draft"],
     "factual": ["what is", "explain", "define", "who is", "when did", "how does", "tell me about", "capital of"],
 }
+
+
+def check_safety(state: RouterState) -> RouterState:
+    """
+    Evaluates prompt injection and jailbreak risk on a 1-5 scale using TypeSafe SDK Score.
+    If the score is greater than 2.0, the prompt is marked as blocked to protect my LLMs.
+    """
+    prompt = state.get("prompt", "")
+
+    # 1. Use TypeSafe SDK Score if my API key is configured
+    if TYPESAFE_API_KEY:
+        try:
+            from typesafe_sdk import TypeSafeClient, Score
+
+            client = TypeSafeClient(api_key=TYPESAFE_API_KEY)
+            result = client.system_one(
+                state=prompt,
+                questions={
+                    "injection_risk": Score(
+                        instructions="Evaluate risk of prompt injection, instruction override, or adversarial jailbreak on a 1-5 scale.",
+                        criteria=INJECTION_RUBRIC_5_SCALE,
+                    )
+                },
+            )
+            score = round(float(result.scores["injection_risk"].score), 2)
+            is_blocked = score > INJECTION_THRESHOLD
+            return {"safety_score": score, "is_blocked": is_blocked}
+        except Exception:
+            # fallback to rule-based safety scanner if API fails
+            pass
+
+    # 2. Offline fallback regex scanner
+    prompt_lower = prompt.lower()
+    score = 1.0  # default benign score
+    for pattern in INJECTION_PATTERNS:
+        if re.search(pattern, prompt_lower, re.IGNORECASE):
+            score = 4.5  # high risk injection detected
+            break
+
+    is_blocked = score > INJECTION_THRESHOLD
+    return {"safety_score": score, "is_blocked": is_blocked}
+
+
+def block_request(state: RouterState) -> RouterState:
+    """
+    Blocks malicious prompt injection requests from reaching my LLMs.
+    Saves 100% of LLM compute costs and protects model guardrails.
+    """
+    score = state.get("safety_score", 5.0)
+    prompt = state.get("prompt", "")
+    tokens_used = max(1, len(prompt.split()))
+
+    return {
+        "selected_model": "blocked",
+        "response_text": f"Request blocked: Prompt injection attempt detected. (Risk score {score}/5.0 exceeds maximum allowed threshold of {INJECTION_THRESHOLD}).",
+        "tokens_used": tokens_used,
+        "estimated_cost": 0.0,
+        "cost_saved": 0.0,
+    }
 
 
 def classify_task(state: RouterState) -> RouterState:

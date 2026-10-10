@@ -7,6 +7,8 @@ class RouterState(TypedDict, total=False):
     TypedDict keeps it lightweight and fast inside the graph nodes.
     """
     prompt: str
+    safety_score: float     # prompt injection score on 1-5 scale (<= 2 is safe, > 2 is blocked)
+    is_blocked: bool        # whether prompt injection was detected
     task_type: str          # classified category: "code", "creative", "factual", etc.
     selected_model: str     # which model got picked by the router
     response_text: str      # LLM response
