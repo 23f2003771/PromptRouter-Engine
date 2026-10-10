@@ -1,20 +1,13 @@
 import re
 from router.state import RouterState
-from router.config import (
-    TYPESAFE_API_KEY,
-    MODEL_MAP,
-    MODEL_COSTS_PER_1K,
-    CLASSIFICATION_CRITERIA,
-    INJECTION_THRESHOLD,
-    INJECTION_RUBRIC_5_SCALE,
-    INJECTION_PATTERNS,
-)
+import router.config as config
 
 # keywords I use as a quick fallback if no API key is provided or network is offline
 TASK_KEYWORDS = {
-    "code": ["code", "function", "debug", "script", "program", "algorithm", "api", "sql", "python", "javascript"],
-    "creative": ["write", "story", "poem", "essay", "blog", "creative", "compose", "draft"],
-    "factual": ["what is", "explain", "define", "who is", "when did", "how does", "tell me about", "capital of"],
+    "code": ["code", "function", "debug", "script", "program", "algorithm", "api", "sql", "python", "javascript", "class", "method", "variable"],
+    "creative": ["write", "story", "poem", "essay", "blog", "creative", "compose", "draft", "dialogue", "fiction", "lyrics"],
+    "factual": ["what is", "explain", "define", "who is", "when did", "how does", "tell me about", "capital of", "history", "identify", "which of"],
+    "general_budget": ["summarize", "summary", "list", "rephrase", "rewrite", "extract", "bullet", "outline", "categorize", "classify"],
 }
 
 
@@ -26,22 +19,22 @@ def check_safety(state: RouterState) -> RouterState:
     prompt = state.get("prompt", "")
 
     # 1. Use TypeSafe SDK Score if my API key is configured
-    if TYPESAFE_API_KEY:
+    if config.TYPESAFE_API_KEY:
         try:
             from typesafe_sdk import TypeSafeClient, Score
 
-            client = TypeSafeClient(api_key=TYPESAFE_API_KEY)
+            client = TypeSafeClient(api_key=config.TYPESAFE_API_KEY)
             result = client.system_one(
                 state=prompt,
                 questions={
                     "injection_risk": Score(
                         instructions="Evaluate risk of prompt injection, instruction override, or adversarial jailbreak on a 1-5 scale.",
-                        criteria=INJECTION_RUBRIC_5_SCALE,
+                        criteria=config.INJECTION_RUBRIC_5_SCALE,
                     )
                 },
             )
             score = round(float(result.scores["injection_risk"].score), 2)
-            is_blocked = score > INJECTION_THRESHOLD
+            is_blocked = score > config.INJECTION_THRESHOLD
             return {"safety_score": score, "is_blocked": is_blocked}
         except Exception:
             # fallback to rule-based safety scanner if API fails
@@ -50,12 +43,12 @@ def check_safety(state: RouterState) -> RouterState:
     # 2. Offline fallback regex scanner
     prompt_lower = prompt.lower()
     score = 1.0  # default benign score
-    for pattern in INJECTION_PATTERNS:
+    for pattern in config.INJECTION_PATTERNS:
         if re.search(pattern, prompt_lower, re.IGNORECASE):
             score = 4.5  # high risk injection detected
             break
 
-    is_blocked = score > INJECTION_THRESHOLD
+    is_blocked = score > config.INJECTION_THRESHOLD
     return {"safety_score": score, "is_blocked": is_blocked}
 
 
@@ -70,7 +63,7 @@ def block_request(state: RouterState) -> RouterState:
 
     return {
         "selected_model": "blocked",
-        "response_text": f"Request blocked: Prompt injection attempt detected. (Risk score {score}/5.0 exceeds maximum allowed threshold of {INJECTION_THRESHOLD}).",
+        "response_text": f"Request blocked: Prompt injection attempt detected. (Risk score {score}/5.0 exceeds maximum allowed threshold of {config.INJECTION_THRESHOLD}).",
         "tokens_used": tokens_used,
         "estimated_cost": 0.0,
         "cost_saved": 0.0,
@@ -85,17 +78,17 @@ def classify_task(state: RouterState) -> RouterState:
     prompt = state.get("prompt", "")
 
     # if I added my TypeSafe API key, use TypeSafe System One for instant classification
-    if TYPESAFE_API_KEY:
+    if config.TYPESAFE_API_KEY:
         try:
             from typesafe_sdk import TypeSafeClient, Choice
 
-            client = TypeSafeClient(api_key=TYPESAFE_API_KEY)
+            client = TypeSafeClient(api_key=config.TYPESAFE_API_KEY)
             result = client.system_one(
                 state=prompt,
                 questions={
                     "task_type": Choice(
                         instructions="Categorize this prompt into the best matching task type.",
-                        criteria=CLASSIFICATION_CRITERIA,
+                        criteria=config.CLASSIFICATION_CRITERIA,
                     )
                 },
             )
@@ -113,7 +106,8 @@ def classify_task(state: RouterState) -> RouterState:
             if re.search(rf"\b{re.escape(kw)}\b", prompt_lower):
                 return {"task_type": task_type}
 
-    return {"task_type": "general"}
+    # default fallback to cheapest micro-model tier
+    return {"task_type": "fallback_cheapest"}
 
 
 def select_model(state: RouterState) -> RouterState:
@@ -121,28 +115,28 @@ def select_model(state: RouterState) -> RouterState:
     Picks the most cost-effective model for the classified task.
     Simple tasks get cheap/fast models, while complex tasks get top-tier models.
     """
-    task_type = state.get("task_type", "general")
-    selected = MODEL_MAP.get(task_type, "gemini-flash")
+    task_type = state.get("task_type", "fallback_cheapest")
+    selected = config.MODEL_MAP.get(task_type, "gemini-2.5-flash-lite")
     return {"selected_model": selected}
 
 
 def generate_response(state: RouterState) -> RouterState:
     """
     Simulates response generation and calculates exact token counts,
-    estimated cost, and how much money I saved vs always using GPT-4o.
+    estimated cost, and how much money I saved vs always using GPT-4o / Flagship.
     """
-    model = state.get("selected_model", "gemini-flash")
+    model = state.get("selected_model", "gemini-2.5-flash-lite")
     prompt = state.get("prompt", "")
-    task_type = state.get("task_type", "general")
+    task_type = state.get("task_type", "fallback_cheapest")
 
     # calculate realistic token count (prompt + estimated output)
     prompt_tokens = max(1, int(len(prompt.split()) * 1.3))
     output_tokens = 50  # average standard response length for estimation
     total_tokens = prompt_tokens + output_tokens
 
-    # calculate cost of selected model vs expensive baseline (GPT-4o)
-    model_rate = MODEL_COSTS_PER_1K.get(model, 0.001)
-    baseline_rate = MODEL_COSTS_PER_1K.get("gpt-5.6-luna", 0.00045)
+    # calculate cost of selected model vs expensive baseline
+    model_rate = config.MODEL_COSTS_PER_1K.get(model, 0.00018)
+    baseline_rate = config.MODEL_COSTS_PER_1K.get("gpt-5.6-terra", 0.0045)
 
     estimated_cost = round((total_tokens / 1000.0) * model_rate, 6)
     baseline_cost = (total_tokens / 1000.0) * baseline_rate

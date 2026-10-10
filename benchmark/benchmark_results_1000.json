@@ -1,0 +1,22 @@
+{
+  "dataset": "databricks-dolly-15k",
+  "tasks_evaluated": 1000,
+  "sampling_method": "random",
+  "mode": "high_throughput",
+  "total_wall_time_seconds": 1.73,
+  "throughput_queries_per_sec": 578.6,
+  "average_routing_latency_ms": 1.72,
+  "total_tokens_processed": 66055,
+  "baseline_model": "gpt-5.6-terra",
+  "baseline_total_cost_usd": 0.2972,
+  "promptrouter_total_cost_usd": 0.0259,
+  "total_cost_saved_usd": 0.2714,
+  "percentage_cost_reduction": 91.3,
+  "blocked_injections": 0,
+  "model_distribution": {
+    "gemini-2.5-flash-lite": 540,
+    "gpt-5.6-luna": 145,
+    "deepseek-v4-flash": 276,
+    "claude-5-sonnet": 39
+  }
+}
