@@ -6,7 +6,7 @@ from router.nodes import classify_task, select_model, generate_response
 def build_router_graph():
     """
     Assembles my routing pipeline as a LangGraph:
-    classify → select_model → generate_response → END
+    START → classify → select_model → generate_response → END
     """
     graph = StateGraph(RouterState)
 
