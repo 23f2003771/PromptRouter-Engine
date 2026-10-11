@@ -54,17 +54,17 @@ PromptRouter operates as an event-driven directed graph using **LangGraph** with
           │  & Zero Tokens │  └────────────┬────────────┘
           └────────────────┘               │
                                            ▼
-          ┌─────────────────────────────────────────────────────────────────┐
-          │                  5-Tier Model Routing Matrix                    │
-          └─┬──────────────┬───────────────┬───────────────┬──────────────┬─┘
-            │              │               │               │              │
-            ▼              ▼               ▼               ▼              ▼
-     ┌──────────────┐┌──────────────┐┌──────────────┐┌──────────────┐┌──────────────┐
-     │    Tier 1    ││    Tier 2    ││    Tier 3    ││    Tier 4    ││    Tier 5    │
-     │ Flagship Eng ││ Flagship Std ││ Budget Mini  ││  Fast Factual││ Micro/Trivial │
-     │claude-5-sonnet││gpt-5.6-terra ││ gpt-5.6-luna ││deepseek-flash││gemini-flash-lite│
-     │  ($0.0040/1k)││  ($0.0045/1k)││ ($0.00045/1k)││ ($0.00020/1k)││ ($0.00018/1k)│
-     └──────────────┘└──────────────┘└──────────────┘└──────────────┘└──────────────┘
+          ┌─────────────────────────────────────────────────────────────────────────┐
+          │                        5-Tier Model Routing Matrix                      │      
+          └─┬────────────────┬─────────────────┬─────────────────┬────────────────┬─┘
+            │                │                 │                 │                │
+            ▼                ▼                 ▼                 ▼                ▼
+    ┌───────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
+    │    Tier 1     │ │    Tier 2    │ │    Tier 3    │ │    Tier 4    │ │    Tier 5        │
+    │ Flagship Eng  │ │ Flagship Std │ │ Budget Mini  │ │  Fast Factual│ │ Micro/Trivial    │
+    │claude-5-sonnet│ │gpt-5.6-terra │ │ gpt-5.6-luna │ │deepseek-flash│ │gemini-flash-lite │
+    │  ($0.0040/1k) │ │  ($0.0045/1k)│ │ ($0.00045/1k)│ │ ($0.00020/1k)│ │ ($0.00018/1k)    │
+    └───────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘
 ```
 
 ### 2.1 The 5-Tier Architecture & 10-Task Routing Catalog
@@ -113,7 +113,7 @@ Rather than binary classification (which suffers from high false-positive rates 
 * **Level 5 (Severe / Exploit):** Multi-stage payload evasion, encoded obfuscation, or deliberate model exploitation.
 
 ### 3.2 Conditional Graph Short-Circuiting
-If the calculated risk score exceeds the strict security threshold ($S > 2.0$), a conditional LangGraph edge (`route_safety`) diverts the execution pipeline to `block_request`:
+If the calculated risk score exceeds the strict security threshold (Score > 2.0), a conditional LangGraph edge (`route_safety`) diverts the execution pipeline to `block_request`:
 ```python
 def route_safety(state: RouterState) -> str:
     if state.get("is_blocked", False):
@@ -185,7 +185,7 @@ PromptRouter exposes an asynchronous ASGI service built on FastAPI (`main.py`):
 
 ### 6.2 Pre-Execution Adversarial Mitigation & Resource Protection
 Rather than directly dispatching raw user inputs to downstream LLMs, PromptRouter enforces entry-level boundary defense in `router/nodes.py`:
-- **Zero-Token Attack Interception:** Prompts evaluated with an injection risk score exceeding the threshold ($S > 2.0$) are diverted by the conditional graph edge (`route_safety`) directly to `block_request`.
+- **Zero-Token Attack Interception:** Prompts evaluated with an injection risk score exceeding the threshold (Score > 2.0) are diverted by the conditional graph edge (`route_safety`) directly to `block_request`.
 - **Financial Defense:** Malicious payloads are halted before downstream model dispatch, consuming zero downstream inference tokens and preventing resource draining from adversarial exploitation.
 
 ### 6.3 Graceful Offline & Network Failover Architecture

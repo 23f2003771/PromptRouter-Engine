@@ -12,7 +12,7 @@ PromptRouter implements an automated security guardrail followed by dynamic rout
 
 ```text
                ┌───────────────────────────────┐
-               │         Incoming Task         │
+               │     Inbound Task Payload      │
                └───────────────┬───────────────┘
                                │
                                ▼
@@ -28,17 +28,17 @@ PromptRouter implements an automated security guardrail followed by dynamic rout
           │  & Zero Tokens │  └────────────┬────────────┘
           └────────────────┘               │
                                            ▼
-          ┌─────────────────────────────────────────────────────────────────┐
-          │                  5-Tier Model Routing Matrix                    │
-          └─┬──────────────┬───────────────┬───────────────┬──────────────┬─┘
-            │              │               │               │              │
-            ▼              ▼               ▼               ▼              ▼
-     ┌──────────────┐┌──────────────┐┌──────────────┐┌──────────────┐┌──────────────┐
-     │    Tier 1    ││    Tier 2    ││    Tier 3    ││    Tier 4    ││    Tier 5    │
-     │ Flagship Eng ││ Flagship Std ││ Budget Mini  ││  Fast Factual││ Micro / Trivial│
-     │claude-5-sonnet││gpt-5.6-terra ││ gpt-5.6-luna ││deepseek-flash││gemini-flash-lite│
-     │  ($0.0040/1k)││  ($0.0045/1k)││ ($0.00045/1k)││ ($0.00020/1k)││ ($0.00018/1k)│
-     └──────────────┘└──────────────┘└──────────────┘└──────────────┘└──────────────┘
+          ┌─────────────────────────────────────────────────────────────────────────┐
+          │                        5-Tier Model Routing Matrix                      │      
+          └─┬────────────────┬─────────────────┬─────────────────┬────────────────┬─┘
+            │                │                 │                 │                │
+            ▼                ▼                 ▼                 ▼                ▼
+    ┌───────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
+    │    Tier 1     │ │    Tier 2    │ │    Tier 3    │ │    Tier 4    │ │    Tier 5        │
+    │ Flagship Eng  │ │ Flagship Std │ │ Budget Mini  │ │  Fast Factual│ │ Micro/Trivial    │
+    │claude-5-sonnet│ │gpt-5.6-terra │ │ gpt-5.6-luna │ │deepseek-flash│ │gemini-flash-lite │
+    │  ($0.0040/1k) │ │  ($0.0045/1k)│ │ ($0.00045/1k)│ │ ($0.00020/1k)│ │ ($0.00018/1k)    │
+    └───────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘
 ```
 
 1. **Security Guardrail Node**: Evaluates prompt injection risk on a 1–5 scale. Prompts scoring > 2.0 are blocked immediately, preventing jailbreaks and saving 100% of downstream tokens.
