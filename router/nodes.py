@@ -2,12 +2,21 @@ import re
 from router.state import RouterState
 import router.config as config
 
-# keywords I use as a quick fallback if no API key is provided or network is offline
+# keywords used as a quick fallback if no API key is provided or network is offline
 TASK_KEYWORDS = {
-    "code": ["code", "function", "debug", "script", "program", "algorithm", "api", "sql", "python", "javascript", "class", "method", "variable"],
-    "creative": ["write", "story", "poem", "essay", "blog", "creative", "compose", "draft", "dialogue", "fiction", "lyrics"],
-    "factual": ["what is", "explain", "define", "who is", "when did", "how does", "tell me about", "capital of", "history", "identify", "which of"],
-    "general_budget": ["summarize", "summary", "list", "rephrase", "rewrite", "extract", "bullet", "outline", "categorize", "classify"],
+    "frontier_autonomous": ["multi-region", "auto-patch", "devops agent", "cloud infrastructure", "autonomous devops", "without human intervention", "fleet"],
+    "agentic_orchestration": ["coordinate", "multi-agent", "cross-platform", "supply chain", "dynamic routing agent", "delegation", "workflow"],
+    "reasoning_heavy": ["proof", "theorem", "convergence", "mathematical correction", "calculus", "derive", "formal proof", "lemma", "algebra", "differential equation"],
+    "reasoning_premium": ["refactor", "monolithic", "microservices", "codebase", "architecture", "migration plan", "concurrency", "race condition"],
+    "reasoning_expert": ["compliance", "clinical trial", "fda", "merger agreement", "legal defense", "regulatory", "statutory", "precedent", "audit"],
+    "code": ["code", "function", "debug", "script", "program", "algorithm", "api", "sql", "python", "javascript", "class", "method", "variable", "database", "postgres", "html", "css", "git"],
+    "creative": ["write a story", "poem", "essay", "blog", "creative", "compose", "draft a script", "dialogue", "fiction", "lyrics", "screenplay", "novel"],
+    "factual_long_context": ["10-k", "annual report", "400-page", "corpus", "massive document", "multi-file analysis"],
+    "general_premium": ["customer support", "escalation", "dialogue", "nuanced", "interview", "consultation"],
+    "agentic_professional": ["invoice", "accounts payable", "operational playbook", "json schema mapping", "backend microservice"],
+    "agentic_fast": ["real-time voice", "voice assistant", "function calling", "stock ticker", "weather api", "low-latency"],
+    "general_budget": ["summarize", "summary", "list", "rephrase", "rewrite", "extract", "bullet", "outline", "categorize", "classify", "draft an email", "thank you email"],
+    "factual": ["what is", "explain", "define", "who is", "when did", "how does", "tell me about", "capital of", "history", "identify", "which of", "where is"],
 }
 
 
@@ -135,8 +144,8 @@ def generate_response(state: RouterState) -> RouterState:
     total_tokens = prompt_tokens + output_tokens
 
     # calculate cost of selected model vs expensive baseline
-    model_rate = config.MODEL_COSTS_PER_1K.get(model, 0.00018)
-    baseline_rate = config.MODEL_COSTS_PER_1K.get("gpt-5.6-terra", 0.0045)
+    model_rate = config.MODEL_COSTS_PER_1K.get(model, 0.00025)
+    baseline_rate = config.MODEL_COSTS_PER_1K.get("gpt-5.6-terra", 0.0070)
 
     estimated_cost = round((total_tokens / 1000.0) * model_rate, 6)
     baseline_cost = (total_tokens / 1000.0) * baseline_rate

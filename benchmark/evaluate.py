@@ -1,175 +1,233 @@
 """
-Benchmark evaluation suite for PromptRouter Engine.
-Evaluates thousands of tasks from the 15,011 Databricks Dolly dataset through
-my routing pipeline to measure cost savings, token savings, and latency.
+PromptRouter Benchmark Suite (RouterBench & LMSYS Arena).
+Evaluates 3,000 modern tasks:
+- 1,500 from RouterBench (GSM8K, MBPP, MMLU, Winogrande)
+- 1,500 from LMSYS Chatbot Arena (RouteLLM user interactions)
 
-Usage:
-    python benchmark/evaluate.py --samples 1000 --random     # 1,000 random data points
-    python benchmark/evaluate.py --samples 15000             # Full dataset
-    python benchmark/evaluate.py --samples 500 --live        # Live TypeSafe API call
+Evaluates:
+1. Phase 1: 700 Random Tasks (350 RouterBench + 350 LMSYS Arena) via Live TypeSafe Cloud API.
+2. Phase 2: Remaining 2,300 Tasks via Local High-Throughput Fast-Path.
+3. Multi-Baseline Comparison:
+   - Monolithic Flagship: gpt-5.6-terra ($0.0070 / 1k tokens)
+   - Monolithic Cheapest: gemini-2.5-flash-lite ($0.00025 / 1k tokens)
+   - Random Routing Baseline across all tiers
 """
 
 import sys
 import json
 import time
 import random
-import argparse
 from pathlib import Path
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 
-# ensure project root is in sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from router import router_graph
 import router.config as config
-from router.config import MODEL_COSTS_PER_1K
+from router.config import MODEL_COSTS_PER_1K, MODEL_MAP
 
-DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "dolly_15k.jsonl"
+DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "routing_benchmark.jsonl"
 BENCHMARK_DIR = Path(__file__).resolve().parent
 
-# baseline model: what it would cost if everything was sent to the flagship model
-BASELINE_MODEL = "gpt-5.6-terra"
-BASELINE_RATE = MODEL_COSTS_PER_1K.get(BASELINE_MODEL, 0.0045)
+FLAGSHIP_BASELINE_MODEL = "gpt-5.6-terra"
+FLAGSHIP_RATE = MODEL_COSTS_PER_1K.get(FLAGSHIP_BASELINE_MODEL, 0.0070)
+
+CHEAPEST_BASELINE_MODEL = "gemini-2.5-flash-lite"
+CHEAPEST_RATE = MODEL_COSTS_PER_1K.get(CHEAPEST_BASELINE_MODEL, 0.00025)
+
+ALL_MODEL_RATES = list(MODEL_COSTS_PER_1K.values())
 
 
-def run_benchmark(num_samples: int = 1000, live_api: bool = False, use_random: bool = True, seed: int = 42):
+def evaluate_single_task(item, use_live_api: bool):
+    prompt = item["prompt"]
+    saved_key = config.TYPESAFE_API_KEY
+    if not use_live_api:
+        config.TYPESAFE_API_KEY = ""
+
+    t0 = time.perf_counter()
+    result = router_graph.invoke({"prompt": prompt})
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+
+    config.TYPESAFE_API_KEY = saved_key
+
+    model = result.get("selected_model", "deepseek-v4-flash")
+    tokens = result.get("tokens_used", max(1, len(prompt.split())))
+    router_cost = result.get("estimated_cost", 0.0)
+
+    # 1. Flagship Baseline
+    flagship_cost = (tokens / 1000.0) * FLAGSHIP_RATE
+
+    # 2. Cheapest Baseline
+    cheapest_cost = (tokens / 1000.0) * CHEAPEST_RATE
+
+    # 3. Random Routing Baseline
+    random_rate = random.choice(ALL_MODEL_RATES)
+    random_cost = (tokens / 1000.0) * random_rate
+
+    return {
+        "id": item.get("id"),
+        "source": item.get("source"),
+        "model": model,
+        "tokens": tokens,
+        "router_cost": router_cost,
+        "flagship_cost": flagship_cost,
+        "cheapest_cost": cheapest_cost,
+        "random_cost": random_cost,
+        "latency_ms": latency_ms,
+        "is_blocked": result.get("is_blocked", False)
+    }
+
+
+def compute_routing_metrics(eval_records, mode_name: str, wall_time_sec: float, api_calls_per_task: int):
+    total_tasks = len(eval_records)
+    total_tokens = sum(r["tokens"] for r in eval_records)
+    total_router_cost = sum(r["router_cost"] for r in eval_records)
+    total_flagship_cost = sum(r["flagship_cost"] for r in eval_records)
+    total_cheapest_cost = sum(r["cheapest_cost"] for r in eval_records)
+    total_random_cost = sum(r["random_cost"] for r in eval_records)
+    total_latency = sum(r["latency_ms"] for r in eval_records)
+
+    avg_latency = round(total_latency / max(total_tasks, 1), 2)
+    throughput = round(total_tasks / max(wall_time_sec, 0.001), 1)
+
+    dollars_saved_vs_flagship = round(max(0.0, total_flagship_cost - total_router_cost), 4)
+    pct_saved_vs_flagship = round((dollars_saved_vs_flagship / max(total_flagship_cost, 0.0001)) * 100, 2)
+
+    model_counts = Counter(r["model"] for r in eval_records)
+    source_counts = Counter(r["source"] for r in eval_records)
+
+    return {
+        "mode": mode_name,
+        "tasks_evaluated": total_tasks,
+        "dataset_composition": dict(source_counts),
+        "api_calls_made": total_tasks * api_calls_per_task,
+        "wall_time_seconds": round(wall_time_sec, 2),
+        "throughput_queries_per_sec": throughput,
+        "average_routing_latency_ms": avg_latency,
+        "total_tokens_processed": total_tokens,
+        "costs": {
+            "promptrouter_cost_usd": round(total_router_cost, 4),
+            "flagship_baseline_cost_usd": round(total_flagship_cost, 4),
+            "cheapest_baseline_cost_usd": round(total_cheapest_cost, 4),
+            "random_routing_cost_usd": round(total_random_cost, 4),
+        },
+        "economic_savings": {
+            "dollars_saved_vs_flagship": dollars_saved_vs_flagship,
+            "percentage_reduction_vs_flagship": pct_saved_vs_flagship,
+            "cost_multiplier_vs_cheapest": round(total_router_cost / max(total_cheapest_cost, 0.0001), 2),
+            "percentage_reduction_vs_random": round(((total_random_cost - total_router_cost) / max(total_random_cost, 0.0001)) * 100, 2),
+        },
+        "model_distribution": dict(model_counts)
+    }
+
+
+def run_benchmark(live_sample_per_source: int = 350, max_live_workers: int = 6):
     if not DATA_FILE.exists():
         print(f"Dataset not found at {DATA_FILE}. Run download_dataset.py first!", flush=True)
         return
 
-    # if not in live API mode, temporarily bypass remote network calls for ultra-fast throughput
-    saved_key = config.TYPESAFE_API_KEY
-    if not live_api:
-        config.TYPESAFE_API_KEY = ""
-
-    print(f"Loading tasks from {DATA_FILE.name}...", flush=True)
-    all_tasks = []
+    items = []
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         for line in f:
             if line.strip():
-                item = json.loads(line)
-                instruction = item.get("instruction", "").strip()
-                if instruction:
-                    all_tasks.append({
-                        "prompt": instruction,
-                        "category": item.get("category", "general"),
-                    })
+                items.append(json.loads(line))
 
-    # select sample points: either random or sequential
-    if use_random and num_samples < len(all_tasks):
-        random.seed(seed)
-        tasks = random.sample(all_tasks, num_samples)
-        sample_type = f"randomly sampled (seed={seed})"
-    else:
-        tasks = all_tasks[:num_samples]
-        sample_type = "sequential"
+    rb_items = [it for it in items if it.get("source") == "routerbench"]
+    lmsys_items = [it for it in items if it.get("source") == "lmsys_arena"]
 
-    total_tasks = len(tasks)
-    mode_label = "Live TypeSafe API" if live_api else "High-Throughput Engine"
-    print(f"Running benchmark on {total_tasks:,} tasks [{sample_type}] ({mode_label})...\n", flush=True)
+    print(f"\n=======================================================", flush=True)
+    print(f"        PROMPTROUTER ROUTING BENCHMARK EVALUATION      ", flush=True)
+    print(f"=======================================================", flush=True)
+    print(f" Total Tasks Loaded        : {len(items):,}", flush=True)
+    print(f"   - RouterBench Tasks     : {len(rb_items):,}", flush=True)
+    print(f"   - LMSYS Arena Tasks     : {len(lmsys_items):,}", flush=True)
 
-    model_counts = Counter()
-    total_tokens = 0
-    total_router_cost = 0.0
-    total_baseline_cost = 0.0
-    total_latency_ms = 0.0
-    blocked_count = 0
+    # 1. Select 350 random from each source for live API test
+    random.seed(42)
+    live_rb = random.sample(rb_items, min(live_sample_per_source, len(rb_items)))
+    live_lmsys = random.sample(lmsys_items, min(live_sample_per_source, len(lmsys_items)))
+    live_tasks = live_rb + live_lmsys
+    random.shuffle(live_tasks)
 
-    start_bench_time = time.perf_counter()
+    live_ids = {it["id"] for it in live_tasks}
+    local_tasks = [it for it in items if it["id"] not in live_ids]
 
-    for idx, item in enumerate(tasks, 1):
-        prompt = item["prompt"]
-        t0 = time.perf_counter()
-        result = router_graph.invoke({"prompt": prompt})
-        step_latency = (time.perf_counter() - t0) * 1000.0
+    print(f" Live TypeSafe API Tasks   : {len(live_tasks):,} (350 RouterBench + 350 LMSYS)", flush=True)
+    print(f" Local Machine Fast-Path   : {len(local_tasks):,} (Remaining Tasks)", flush=True)
+    print(f" Naive Comparison Baseline : {FLAGSHIP_BASELINE_MODEL} (${FLAGSHIP_RATE}/1k tokens)\n", flush=True)
 
-        model = result.get("selected_model", "deepseek-v4-flash")
-        tokens = result.get("tokens_used", len(prompt.split()))
-        router_cost = result.get("estimated_cost", 0.0)
+    # Phase 1: Live TypeSafe Cloud API Run
+    print(f"Phase 1: Evaluating {len(live_tasks):,} tasks on Live TypeSafe API...", flush=True)
+    t0_live = time.perf_counter()
+    live_records = []
 
-        # calculate baseline cost if sent to expensive flagship model
-        baseline_cost = (tokens / 1000.0) * BASELINE_RATE
+    with ThreadPoolExecutor(max_workers=max_live_workers) as executor:
+        futures = [executor.submit(evaluate_single_task, it, True) for it in live_tasks]
+        for idx, f in enumerate(futures, 1):
+            live_records.append(f.result())
+            if idx % 100 == 0 or idx == len(live_tasks):
+                print(f"  Live processed {idx:>3}/{len(live_tasks)} tasks ({idx/len(live_tasks)*100:.1f}%)...", flush=True)
 
-        model_counts[model] += 1
-        total_tokens += tokens
-        total_router_cost += router_cost
-        total_baseline_cost += baseline_cost
-        total_latency_ms += step_latency
+    wall_live = time.perf_counter() - t0_live
+    live_summary = compute_routing_metrics(live_records, "live_typesafe_cloud_api", wall_live, api_calls_per_task=2)
 
-        if result.get("is_blocked"):
-            blocked_count += 1
+    with open(BENCHMARK_DIR / "benchmark_results_700_live.json", "w", encoding="utf-8") as f:
+        json.dump(live_summary, f, indent=2)
 
-        if idx % 250 == 0 or idx == total_tasks:
-            print(f"  Processed {idx:>5,} / {total_tasks:,} tasks ({idx/total_tasks*100:5.1f}%)...", flush=True)
+    # Phase 2: Local High-Throughput Run
+    print(f"\nPhase 2: Evaluating {len(local_tasks):,} remaining tasks on Local Fast-Path...", flush=True)
+    t0_local = time.perf_counter()
+    local_records = [evaluate_single_task(it, False) for it in local_tasks]
+    wall_local = time.perf_counter() - t0_local
+    local_summary = compute_routing_metrics(local_records, "local_high_throughput_fastpath", wall_local, api_calls_per_task=0)
 
-    wall_time_sec = time.perf_counter() - start_bench_time
-    throughput_qps = round(total_tasks / max(wall_time_sec, 0.001), 1)
+    with open(BENCHMARK_DIR / "benchmark_results_2300_local.json", "w", encoding="utf-8") as f:
+        json.dump(local_summary, f, indent=2)
 
-    # restore key
-    config.TYPESAFE_API_KEY = saved_key
+    # Phase 3: Full Combined Evaluation (All 3,000 tasks evaluated locally)
+    print(f"\nPhase 3: Evaluating full {len(items):,} task dataset locally...", flush=True)
+    t0_all = time.perf_counter()
+    all_local_records = [evaluate_single_task(it, False) for it in items]
+    wall_all = time.perf_counter() - t0_all
+    all_local_summary = compute_routing_metrics(all_local_records, "full_3000_dataset_local_fastpath", wall_all, api_calls_per_task=0)
 
-    # compute final aggregated metrics
-    avg_latency_ms = round(total_latency_ms / total_tasks, 2)
-    total_saved_dollars = round(max(0.0, total_baseline_cost - total_router_cost), 4)
-    pct_cost_saved = round((total_saved_dollars / max(total_baseline_cost, 0.0001)) * 100, 2)
-
-    summary = {
-        "dataset": "databricks-dolly-15k",
-        "tasks_evaluated": total_tasks,
-        "sampling_method": "random" if use_random else "sequential",
-        "mode": "live_typesafe_api" if live_api else "high_throughput_fastpath",
-        "api_calls_made": total_tasks * 2 if live_api else 0,
-        "total_wall_time_seconds": round(wall_time_sec, 2),
-        "throughput_queries_per_sec": throughput_qps,
-        "average_routing_latency_ms": avg_latency_ms,
-        "total_tokens_processed": total_tokens,
-        "baseline_model": BASELINE_MODEL,
-        "baseline_total_cost_usd": round(total_baseline_cost, 4),
-        "promptrouter_total_cost_usd": round(total_router_cost, 4),
-        "total_cost_saved_usd": total_saved_dollars,
-        "percentage_cost_reduction": pct_cost_saved,
-        "blocked_injections": blocked_count,
-        "model_distribution": dict(model_counts),
+    combined_results = {
+        "dataset": "RouterBench_and_LMSYS_Arena",
+        "live_api_700_sample": live_summary,
+        "remaining_local_2300_sample": local_summary,
+        "full_3000_local_benchmark": all_local_summary
     }
 
-    # save results to both specific sample file and general results file
-    sample_file = BENCHMARK_DIR / f"benchmark_results_{total_tasks}.json"
-    with open(sample_file, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
+    with open(BENCHMARK_DIR / "benchmark_results.json", "w", encoding="utf-8") as f:
+        json.dump(combined_results, f, indent=2)
 
-    default_file = BENCHMARK_DIR / "benchmark_results.json"
-    with open(default_file, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
-
-    # print benchmark evaluation summary report
     print("\n" + "=" * 65, flush=True)
-    print("           PROMPTROUTER BENCHMARK EVALUATION REPORT           ", flush=True)
+    print("            PROMPTROUTER EVALUATION SUMMARY REPORT            ", flush=True)
     print("=" * 65, flush=True)
-    print(f" Tasks Evaluated           : {total_tasks:,}", flush=True)
-    print(f" Sampling Method           : {sample_type}", flush=True)
-    print(f" Total Tokens Processed    : {total_tokens:,}", flush=True)
-    print(f" Average Routing Overhead  : {avg_latency_ms:.2f} ms", flush=True)
-    print(f" Engine Throughput         : {throughput_qps:,} queries/sec", flush=True)
-    print(f" Execution Wall Time       : {wall_time_sec:.2f} seconds", flush=True)
+    print(f" [Live API Split - 700 Tasks (350 RouterBench + 350 LMSYS)]", flush=True)
+    print(f"   Average Latency         : {live_summary['average_routing_latency_ms']} ms", flush=True)
+    print(f"   Throughput              : {live_summary['throughput_queries_per_sec']} QPS", flush=True)
+    print(f"   Flagship Baseline Cost  : ${live_summary['costs']['flagship_baseline_cost_usd']:.4f}", flush=True)
+    print(f"   PromptRouter Cost       : ${live_summary['costs']['promptrouter_cost_usd']:.4f}", flush=True)
+    print(f"   Dollars Saved           : ${live_summary['economic_savings']['dollars_saved_vs_flagship']:.4f}", flush=True)
+    print(f"   Cost Reduction          : {live_summary['economic_savings']['percentage_reduction_vs_flagship']}%", flush=True)
+    print(f"   Savings vs Random       : {live_summary['economic_savings']['percentage_reduction_vs_random']}%", flush=True)
     print("-" * 65, flush=True)
-    print(f" Baseline Cost ({BASELINE_MODEL:<10}) : ${total_baseline_cost:.4f}", flush=True)
-    print(f" PromptRouter Cost         : ${total_router_cost:.4f}", flush=True)
-    print(f" Total Money Saved         : ${total_saved_dollars:.4f}", flush=True)
-    print(f" Cost Reduction Achieved   : {pct_cost_saved:.1f}% SAVINGS", flush=True)
+    print(f" [Remaining Local Split - {local_summary['tasks_evaluated']} Tasks]", flush=True)
+    print(f"   Average Decision Latency: {local_summary['average_routing_latency_ms']} ms", flush=True)
+    print(f"   Throughput              : {local_summary['throughput_queries_per_sec']} QPS", flush=True)
+    print(f"   Cost Reduction          : {local_summary['economic_savings']['percentage_reduction_vs_flagship']}%", flush=True)
     print("-" * 65, flush=True)
-    print(" Model Routing Distribution:", flush=True)
-    for model, count in model_counts.most_common():
-        pct = (count / total_tasks) * 100
-        print(f"   - {model:<22}: {count:>5,} tasks ({pct:5.1f}%)", flush=True)
+    print(f" [Full 3,000 Tasks Local Benchmark]", flush=True)
+    print(f"   Average Decision Latency: {all_local_summary['average_routing_latency_ms']} ms", flush=True)
+    print(f"   Throughput              : {all_local_summary['throughput_queries_per_sec']} QPS", flush=True)
+    print(f"   Cost Reduction          : {all_local_summary['economic_savings']['percentage_reduction_vs_flagship']}%", flush=True)
     print("=" * 65, flush=True)
-    print(f"Results saved to: {sample_file.name} & benchmark_results.json\n", flush=True)
+    print("Benchmark complete! All JSON results saved in benchmark/\n", flush=True)
+
+    return combined_results
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run PromptRouter benchmark on Dolly 15k dataset.")
-    parser.add_argument("--samples", type=int, default=1000, help="Number of tasks to evaluate (default: 1000)")
-    parser.add_argument("--live", action="store_true", help="Use live TypeSafe network API calls")
-    parser.add_argument("--random", action="store_true", default=True, help="Randomly sample tasks across the dataset")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility (default: 42)")
-    args = parser.parse_args()
-    run_benchmark(num_samples=args.samples, live_api=args.live, use_random=args.random, seed=args.seed)
+    run_benchmark(live_sample_per_source=350, max_live_workers=6)

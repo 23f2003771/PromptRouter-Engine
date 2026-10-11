@@ -23,4 +23,5 @@ build/
 *.egg-info/
 
 # Benchmark datasets
-data/*.jsonl
+data/
+

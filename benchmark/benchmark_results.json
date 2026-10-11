@@ -1,23 +1,116 @@
 {
-  "dataset": "databricks-dolly-15k",
-  "tasks_evaluated": 1000,
-  "sampling_method": "random",
-  "mode": "high_throughput_fastpath",
-  "api_calls_made": 0,
-  "total_wall_time_seconds": 1.73,
-  "throughput_queries_per_sec": 578.6,
-  "average_routing_latency_ms": 1.72,
-  "total_tokens_processed": 66055,
-  "baseline_model": "gpt-5.6-terra",
-  "baseline_total_cost_usd": 0.2972,
-  "promptrouter_total_cost_usd": 0.0259,
-  "total_cost_saved_usd": 0.2714,
-  "percentage_cost_reduction": 91.3,
-  "blocked_injections": 0,
-  "model_distribution": {
-    "gemini-2.5-flash-lite": 540,
-    "gpt-5.6-luna": 145,
-    "deepseek-v4-flash": 276,
-    "claude-5-sonnet": 39
+  "dataset": "RouterBench_and_LMSYS_Arena",
+  "live_api_700_sample": {
+    "mode": "live_typesafe_cloud_api",
+    "tasks_evaluated": 700,
+    "dataset_composition": {
+      "routerbench": 350,
+      "lmsys_arena": 350
+    },
+    "api_calls_made": 1400,
+    "wall_time_seconds": 97.96,
+    "throughput_queries_per_sec": 7.1,
+    "average_routing_latency_ms": 835.91,
+    "total_tokens_processed": 121237,
+    "costs": {
+      "promptrouter_cost_usd": 0.1353,
+      "flagship_baseline_cost_usd": 0.8487,
+      "cheapest_baseline_cost_usd": 0.0303,
+      "random_routing_cost_usd": 0.9176
+    },
+    "economic_savings": {
+      "dollars_saved_vs_flagship": 0.7134,
+      "percentage_reduction_vs_flagship": 84.06,
+      "cost_multiplier_vs_cheapest": 4.46,
+      "percentage_reduction_vs_random": 85.26
+    },
+    "model_distribution": {
+      "deepseek-v4-flash": 352,
+      "gpt-5.6-luna": 104,
+      "gemini-2.5-flash-lite": 126,
+      "claude-5-sonnet": 65,
+      "deepseek-r1": 20,
+      "gpt-5.6-terra": 20,
+      "blocked": 4,
+      "claude-5-5-opus": 9
+    }
+  },
+  "remaining_local_2300_sample": {
+    "mode": "local_high_throughput_fastpath",
+    "tasks_evaluated": 2300,
+    "dataset_composition": {
+      "routerbench": 1150,
+      "lmsys_arena": 1150
+    },
+    "api_calls_made": 0,
+    "wall_time_seconds": 6.07,
+    "throughput_queries_per_sec": 378.8,
+    "average_routing_latency_ms": 2.63,
+    "total_tokens_processed": 403533,
+    "costs": {
+      "promptrouter_cost_usd": 0.5446,
+      "flagship_baseline_cost_usd": 2.8247,
+      "cheapest_baseline_cost_usd": 0.1009,
+      "random_routing_cost_usd": 3.612
+    },
+    "economic_savings": {
+      "dollars_saved_vs_flagship": 2.2801,
+      "percentage_reduction_vs_flagship": 80.72,
+      "cost_multiplier_vs_cheapest": 5.4,
+      "percentage_reduction_vs_random": 84.92
+    },
+    "model_distribution": {
+      "gemini-2.5-flash-lite": 1590,
+      "deepseek-v4-flash": 266,
+      "gpt-5.6-luna": 115,
+      "claude-5-sonnet": 293,
+      "o3-reasoning": 6,
+      "claude-5-5-opus": 11,
+      "deepseek-r1": 4,
+      "blocked": 1,
+      "gpt-5.6-terra": 7,
+      "claude-5-1-fable": 4,
+      "gpt-6.1-sol": 1,
+      "gemini-3.1-pro": 2
+    }
+  },
+  "full_3000_local_benchmark": {
+    "mode": "full_3000_dataset_local_fastpath",
+    "tasks_evaluated": 3000,
+    "dataset_composition": {
+      "lmsys_arena": 1500,
+      "routerbench": 1500
+    },
+    "api_calls_made": 0,
+    "wall_time_seconds": 7.44,
+    "throughput_queries_per_sec": 403.1,
+    "average_routing_latency_ms": 2.47,
+    "total_tokens_processed": 524983,
+    "costs": {
+      "promptrouter_cost_usd": 0.6931,
+      "flagship_baseline_cost_usd": 3.6749,
+      "cheapest_baseline_cost_usd": 0.1312,
+      "random_routing_cost_usd": 4.3616
+    },
+    "economic_savings": {
+      "dollars_saved_vs_flagship": 2.9818,
+      "percentage_reduction_vs_flagship": 81.14,
+      "cost_multiplier_vs_cheapest": 5.28,
+      "percentage_reduction_vs_random": 84.11
+    },
+    "model_distribution": {
+      "gemini-2.5-flash-lite": 2073,
+      "claude-5-sonnet": 384,
+      "deepseek-v4-flash": 350,
+      "gpt-5.6-luna": 144,
+      "gpt-5.6-terra": 8,
+      "o3-reasoning": 8,
+      "claude-5-5-opus": 13,
+      "deepseek-r1": 8,
+      "blocked": 2,
+      "gemini-3.1-pro": 3,
+      "claude-5-1-fable": 6,
+      "gpt-6.1-sol": 1
+    }
   }
 }

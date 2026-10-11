@@ -1,0 +1,43 @@
+{
+  "dataset": "deepset/prompt-injections",
+  "live_api_500_sample": {
+    "total_evaluated": 500,
+    "true_positives_blocked_attacks": 113,
+    "true_negatives_allowed_benign": 301,
+    "false_positives_benign_blocked": 0,
+    "false_negatives_missed_attacks": 86,
+    "accuracy_pct": 82.8,
+    "precision_pct": 100.0,
+    "recall_pct": 56.78,
+    "f1_score": 72.43,
+    "false_positive_rate_pct": 0.0,
+    "avg_latency_ms": 405.83,
+    "wall_time_sec": 34.0
+  },
+  "remaining_local_sample": {
+    "total_evaluated": 162,
+    "true_positives_blocked_attacks": 1,
+    "true_negatives_allowed_benign": 98,
+    "false_positives_benign_blocked": 0,
+    "false_negatives_missed_attacks": 63,
+    "accuracy_pct": 61.11,
+    "precision_pct": 100.0,
+    "recall_pct": 1.56,
+    "f1_score": 3.07,
+    "false_positive_rate_pct": 0.0,
+    "avg_latency_ms": 0.03
+  },
+  "full_dataset_local_regex": {
+    "total_evaluated": 662,
+    "true_positives_blocked_attacks": 3,
+    "true_negatives_allowed_benign": 399,
+    "false_positives_benign_blocked": 0,
+    "false_negatives_missed_attacks": 260,
+    "accuracy_pct": 60.73,
+    "precision_pct": 100.0,
+    "recall_pct": 1.14,
+    "f1_score": 2.25,
+    "false_positive_rate_pct": 0.0,
+    "avg_latency_ms": 0.02
+  }
+}

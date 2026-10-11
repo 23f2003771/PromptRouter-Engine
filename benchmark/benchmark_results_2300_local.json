@@ -1,0 +1,39 @@
+{
+  "mode": "local_high_throughput_fastpath",
+  "tasks_evaluated": 2300,
+  "dataset_composition": {
+    "routerbench": 1150,
+    "lmsys_arena": 1150
+  },
+  "api_calls_made": 0,
+  "wall_time_seconds": 6.07,
+  "throughput_queries_per_sec": 378.8,
+  "average_routing_latency_ms": 2.63,
+  "total_tokens_processed": 403533,
+  "costs": {
+    "promptrouter_cost_usd": 0.5446,
+    "flagship_baseline_cost_usd": 2.8247,
+    "cheapest_baseline_cost_usd": 0.1009,
+    "random_routing_cost_usd": 3.612
+  },
+  "economic_savings": {
+    "dollars_saved_vs_flagship": 2.2801,
+    "percentage_reduction_vs_flagship": 80.72,
+    "cost_multiplier_vs_cheapest": 5.4,
+    "percentage_reduction_vs_random": 84.92
+  },
+  "model_distribution": {
+    "gemini-2.5-flash-lite": 1590,
+    "deepseek-v4-flash": 266,
+    "gpt-5.6-luna": 115,
+    "claude-5-sonnet": 293,
+    "o3-reasoning": 6,
+    "claude-5-5-opus": 11,
+    "deepseek-r1": 4,
+    "blocked": 1,
+    "gpt-5.6-terra": 7,
+    "claude-5-1-fable": 4,
+    "gpt-6.1-sol": 1,
+    "gemini-3.1-pro": 2
+  }
+}

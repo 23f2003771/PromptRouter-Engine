@@ -1,14 +1,14 @@
 # PromptRouter Engine 🚀
 
-An intelligent, low-latency LLM orchestration and routing engine built with **FastAPI**, **LangGraph**, and **TypeSafe SDK**. 
+An exploratory, cost-optimized LLM orchestration gateway and research project built with **FastAPI**, **LangGraph**, and **TypeSafe SDK**.
 
-PromptRouter dynamically evaluates incoming user prompts, guards against prompt injections using a 5-scale security evaluator, and routes tasks to the most cost-effective model across 5 distinct intelligence tiers.
+PromptRouter evaluates incoming user prompts, intercepts prompt injection attempts using a 5-scale security evaluator, and routes queries to the most cost-effective model across 5 intelligence tiers based on task complexity.
 
 ---
 
 ## 🏛️ System Architecture & 5-Tier Routing Matrix
 
-PromptRouter implements an automated security guardrail followed by dynamic routing across five specialized model tiers:
+PromptRouter implements an upstream security guardrail followed by dynamic routing across five specialized model tiers:
 
 ```text
                ┌───────────────────────────────┐
@@ -29,82 +29,87 @@ PromptRouter implements an automated security guardrail followed by dynamic rout
           └────────────────┘               │
                                            ▼
           ┌─────────────────────────────────────────────────────────────────────────┐
-          │                        5-Tier Model Routing Matrix                      │      
+          │                       5-Tier Model Routing Matrix                       │      
           └─┬────────────────┬─────────────────┬─────────────────┬────────────────┬─┘
             │                │                 │                 │                │
             ▼                ▼                 ▼                 ▼                ▼
     ┌───────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
     │    Tier 1     │ │    Tier 2    │ │    Tier 3    │ │    Tier 4    │ │    Tier 5        │
-    │ Flagship Eng  │ │ Flagship Std │ │ Budget Mini  │ │  Fast Factual│ │ Micro/Trivial    │
-    │claude-5-sonnet│ │gpt-5.6-terra │ │ gpt-5.6-luna │ │deepseek-flash│ │gemini-flash-lite │
-    │  ($0.0040/1k) │ │  ($0.0045/1k)│ │ ($0.00045/1k)│ │ ($0.00020/1k)│ │ ($0.00018/1k)    │
+    │Heavy Reasoning│ │Flagship Work-│ │Performance   │ │Fast Factual  │ │Micro & Floor   │
+    │& Autonomous   │ │horses        │ │Mini Tier     │ │Knowledge     │ │Fallback        │
+    │deepseek-r1    │ │claude-5-     │ │gemini-3.8-   │ │deepseek-v4-  │ │gemini-2.5-     │
+    │o3-reasoning   │ │sonnet        │ │flash         │ │flash         │ │flash-lite      │
+    │claude-5-5-opus│ │gpt-5.6-terra │ │gpt-5.6-luna  │ │              │ │                  │
+    │($0.0012-$0.03)│ │($0.006-$0.007│ │($0.0007-$0.00│ │($0.00021/1k) │ │($0.00025/1k)     │
     └───────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘
 ```
 
-1. **Security Guardrail Node**: Evaluates prompt injection risk on a 1–5 scale. Prompts scoring > 2.0 are blocked immediately, preventing jailbreaks and saving 100% of downstream tokens.
-2. **Dual-Path Execution Architecture**:
-   - **Deep Semantic Path (TypeSafe SDK Cloud)**: Full semantic classification and probabilistic safety scoring via TypeSafe System One API (~905ms public WAN round-trips over TLS).
-   - **High-Throughput Fast-Path (Local Engine)**: In-memory regex guardrails and word-boundary heuristic routing for zero-latency (<2ms, 578+ QPS) execution without burning external API quota.
-3. **5-Tier Model Selection**: Routes complex coding to Tier 1/2, general chat to Tier 2, summarization/JSON extraction to Tier 3, factual queries to Tier 4, and simple formatting to Tier 5.
-4. **Economics & Telemetry**: Automatically records latency, token count, cost, and dollars saved vs. always calling flagship models.
+1. **Adversarial Guardrail Node**: Evaluates prompt injection risk on a 1–5 scale. Prompts scoring > 2.0 are blocked immediately, preventing model compromise and consuming 0 downstream inference tokens.
+2. **Dual-Path Routing Architecture**:
+   - **Cloud Semantic Path (TypeSafe SDK)**: Performs semantic classification and probabilistic safety scoring via TypeSafe System One API over public WAN TLS (~835 ms decision latency).
+   - **Local Heuristic Fast-Path (In-Memory)**: In-memory regex guardrails and word-boundary keyword routing (~2.5 ms latency, ~400 QPS) for high-throughput testing or when running offline without external API quota.
+3. **5-Tier Model Selection**: Routes complex coding and formal reasoning to Tier 1/2, general chat to Tier 2, summarization/JSON extraction to Tier 3, factual queries to Tier 4, and simple formatting to Tier 5.
+4. **Economics & Telemetry**: Automatically records latency, token count, cost, and savings against multiple baseline strategies.
 
-### 📋 5-Tier Architecture & Complete 10-Task Routing Catalog
+---
 
-PromptRouter configures 10 granular task criteria in `router/config.py` mapped across 5 operational tiers and 9 modern LLMs:
+### 📋 5-Tier Routing Catalog
+
+PromptRouter defines 14 task categories in `router/config.py` mapped across 5 operational tiers and 12 modern LLMs:
 
 | Tier | Category / Task Type | Target Model | Blended Rate / 1k Tokens | Capabilities & Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| **Tier 1: Heavy Reasoning** | `reasoning_heavy`<br>`reasoning_premium` | `deepseek-r1`<br>`o3-reasoning` | $0.0012<br>$0.0250 | Complex mathematical proofs, deep algorithmic architecture, autonomous agent planning |
-| **Tier 2: Flagship Workhorses** | `code`<br>`creative`<br>`factual_long_context`<br>`general_premium` | `claude-5-sonnet`<br>`gemini-3.1-pro`<br>`gpt-5.6-terra` | $0.0040<br>$0.0040<br>$0.0045<br>$0.0045 | Full-stack software engineering, nuanced editorial prose, 1M+ token document analysis, complex multi-turn dialogue |
-| **Tier 3: Performance Mini** | `agentic_fast`<br>`general_budget` | `gemini-3.8-flash`<br>`gpt-5.6-luna` | $0.0015<br>$0.00045 | Low-latency agentic loops, high-velocity JSON schema extraction, structured entity tagging |
-| **Tier 4: High-Speed Factual** | `factual` | `deepseek-v4-flash` | $0.00020 | High-throughput factual QA, knowledge retrieval, short summarization |
-| **Tier 5: Micro & Floor Fallback** | `fallback_cheapest` | `gemini-2.5-flash-lite` | $0.00018 | Basic string reformatting, binary classification, trivial single-turn text queries |
-
-*(Note: In the Databricks Dolly 15k dataset benchmarks, user tasks concentrated in general QA, summarization, creative text, and programming, which dynamically routed to the 5 representative tier models: `deepseek-v4-flash`, `gpt-5.6-luna`, `gemini-2.5-flash-lite`, `gpt-5.6-terra`, and `claude-5-sonnet`).*
+| **Tier 1: Heavy Reasoning & Frontiers** | `frontier_autonomous`<br>`agentic_orchestration`<br>`reasoning_heavy`<br>`reasoning_premium`<br>`reasoning_expert` | `gpt-6-astra`<br>`claude-5-1-fable`<br>`deepseek-r1`<br>`o3-reasoning`<br>`claude-5-5-opus` | $0.0300<br>$0.0300<br>$0.0012<br>$0.0050<br>$0.0120 | Long-horizon agentic workflows, formal mathematical proofs, complex algorithmic debugging, and deep regulatory/legal analysis |
+| **Tier 2: Flagship Workhorses** | `code`<br>`creative`<br>`factual_long_context`<br>`general_premium`<br>`agentic_professional` | `claude-5-sonnet`<br>`claude-5-sonnet`<br>`gemini-3.1-pro`<br>`gpt-5.6-terra`<br>`gpt-6.1-sol` | $0.0060<br>$0.0060<br>$0.0070<br>$0.0070<br>$0.0060 | Full-stack software engineering, nuanced editorial prose, 1M+ token document analysis, multi-turn consultation, and structured microservice tasks |
+| **Tier 3: Performance Mini** | `agentic_fast`<br>`general_budget` | `gemini-3.8-flash`<br>`gpt-5.6-luna` | $0.00225<br>$0.00070 | Low-latency agentic loops, high-velocity JSON schema extraction, structured entity tagging |
+| **Tier 4: High-Speed Factual** | `factual` | `deepseek-v4-flash` | $0.00021 | High-throughput factual QA, knowledge retrieval, definitions, short explanations |
+| **Tier 5: Micro & Floor Fallback** | `fallback_cheapest` | `gemini-2.5-flash-lite` | $0.00025 | Basic string reformatting, binary classification, unmatched fallback queries |
 
 ---
 
-## 📊 Benchmark Validation Results
+## 📊 Benchmark Evaluation Results
 
-Evaluated against human-annotated tasks from the [Databricks Dolly 15k Dataset](https://huggingface.co/datasets/databricks/databricks-dolly-15k).
+Evaluated against **3,000 modern research tasks** sourced equally from:
+- **[RouterBench](https://huggingface.co/datasets/withmartian/routerbench) (1,500 tasks):** Formal reasoning (GSM8K), code generation (MBPP), factual knowledge (MMLU), and commonsense (Winogrande).
+- **[LMSYS Chatbot Arena](https://huggingface.co/datasets/routellm/gpt4_dataset) via RouteLLM (1,500 tasks):** Real-world user interactions reflecting authentic prompt distributions.
 
-Given standard developer quota constraints (e.g. 3,000 total API calls, where each live prompt requires 2 TypeSafe API calls: one for injection scoring and one for classification), the benchmark suite rigorously evaluates both execution modes:
+### Routing Performance Across Baselines
 
-### Benchmark Summary Comparison
-
-| Metric | 500-Task Live API Validation | 1,000 Random Tasks Fast-Path |
+| Metric | 700-Task Live API Run (350 RB + 350 LMSYS) | Full 3,000-Task Local Benchmark |
 | :--- | :--- | :--- |
-| **Tasks Evaluated** | 500 tasks | 1,000 tasks (Random Seed 42) |
-| **Total Tokens** | 32,424 tokens | 66,055 tokens |
-| **Routing Mode** | **Live TypeSafe Cloud API** | **High-Throughput Local Fast-Path** |
-| **TypeSafe API Calls Made** | **1,000 calls** (2 per prompt) | **0 calls** (In-Memory Engine) |
-| **Average Latency** | **905.81 ms** (Public WAN Network Round-Trips) | **1.72 ms** (Local Gateway Overhead) |
-| **Throughput** | 1.1 queries / sec | **578.6 queries / sec** |
-| **Baseline Cost (`gpt-5.6-terra`)** | $0.1459 | $0.2972 |
-| **PromptRouter Cost** | **$0.0100** | **$0.0259** |
-| **Total Dollars Saved** | **$0.1359** | **$0.2714** |
-| **Cost Reduction Achieved** | **93.14% SAVINGS** | **91.32% SAVINGS** |
+| **Tasks Evaluated** | 700 queries | 3,000 queries |
+| **Routing Mode** | **Live TypeSafe Cloud API** | **Local Fast-Path Heuristic** |
+| **External API Calls Made** | **1,400 calls** (2 per prompt) | **0 calls** (In-Memory Engine) |
+| **Average Decision Latency** | **835.91 ms** (Public WAN Network) | **2.47 ms** (Local Overhead) |
+| **Throughput** | 7.1 QPS (6 worker threads) | **403.1 QPS** |
+| **Flagship Baseline (`gpt-5.6-terra` @ $0.0070/1k)** | $0.8487 | $3.6749 |
+| **Cheapest Baseline (`gemini-2.5-flash-lite` @ $0.00025/1k)** | $0.0303 | $0.1312 |
+| **Random Routing Baseline** | $0.9176 | $4.3616 |
+| **PromptRouter Cost** | **$0.1353** | **$0.6931** |
+| **Dollars Saved vs Flagship** | **$0.7134** | **$2.9818** |
+| **Cost Reduction vs Flagship** | **84.06% SAVINGS** | **81.14% SAVINGS** |
+| **Cost Reduction vs Random** | **85.26% SAVINGS** | **84.11% SAVINGS** |
+| **Cost Multiplier vs Cheapest** | **4.46x** | **5.28x** |
+
+> **Quality vs. Cost Note:** The Always Cheapest baseline achieves a theoretical 96.4% savings on paper by sending all requests to a $0.00025/1k micro model, but degrades response quality on math proofs, complex coding, and nuanced reasoning. PromptRouter spends 5.28x of the absolute cheapest floor because it intentionally routes complex tasks to Tier 1 and Tier 2 models (`claude-5-sonnet`, `deepseek-r1`, `o3-reasoning`), striking a balance between output quality and cost.
 
 ---
 
-### Model Distribution Breakdown
+## 🛡️ Adversarial Guardrail Evaluation
 
-Across both benchmark runs, the vast majority of tasks were handled by ultra-low-cost specialized tiers rather than expensive flagship models:
+Evaluated against **662 labeled queries** from the Hugging Face research dataset [`deepset/prompt-injections`](https://huggingface.co/datasets/deepset/prompt-injections) (263 attacks, 399 benign):
 
-#### 1,000 Random Tasks Benchmark
-* **54.0%** — `gemini-2.5-flash-lite` (540 tasks): Micro formatting, basic binary classification
-* **27.6%** — `deepseek-v4-flash` (276 tasks): Factual QA, knowledge retrieval
-* **14.5%** — `gpt-5.6-luna` (145 tasks): Everyday summaries, JSON extraction, brainstorming
-* **3.9%** — `claude-5-sonnet` (39 tasks): Complex programming, architecture, creative prose
+| Metric | Live TypeSafe API (500 Prompts) | Local Regex Heuristic (662 Prompts) |
+| :--- | :--- | :--- |
+| **Evaluation Method** | TypeSafe SDK `Score` (1–5 Rubric) | Static Regex Pattern Scanning |
+| **Accuracy** | **82.80%** | 60.73% |
+| **Precision** | **100.00%** (0 false positives on benign queries) | 100.00% |
+| **Recall** | **56.78%** (blocked 113 of 199 attacks in sample) | **1.14%** (blocked 3 of 263 attacks) |
+| **F1 Score** | **72.43** | 2.25 |
+| **False Positive Rate (FPR)** | **0.00%** | 0.00% |
+| **Average Decision Latency** | **405.83 ms** (Public WAN Network) | **0.02 ms** (Local Process) |
 
-#### 500-Task Live API Validation
-* **80.8%** — `deepseek-v4-flash` (404 tasks)
-* **14.2%** — `gpt-5.6-luna` (71 tasks)
-* **3.4%** — `gemini-2.5-flash-lite` (17 tasks)
-* **1.0%** — `gpt-5.6-terra` (5 tasks)
-* **0.6%** — `claude-5-sonnet` (3 tasks)
-
-*(Saved in `benchmark/benchmark_results_500.json` and `benchmark/benchmark_results_1000.json`).*
+**Key Research Finding:** Static keyword regex filters caught only **1.14%** of real injection attacks, failing on rephrased instructions, roleplays, and obfuscations. Semantic scoring via the TypeSafe API captured **56.78%** of attacks with **0.0% false positives** on benign inputs, demonstrating that semantic evaluation is required for effective prompt injection defense.
 
 ---
 
@@ -119,24 +124,24 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure Environment
-Copy `.env.example` to `.env`:
+Create a `.env` file from `.env.example`:
 ```bash
 cp .env.example .env
 ```
-*(Optional: Add your `TYPESAFE_API_KEY` for live cloud classification and scoring).*
+*(Optional: Set `TYPESAFE_API_KEY` for live cloud classification and scoring).*
 
 ### 3. Run the Engine
 Start the FastAPI server:
 ```bash
 python -m uvicorn main:app --port 8000
 ```
-API Documentation is live at `http://127.0.0.1:8000/docs`.
+Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
 
 ---
 
 ## 💻 Using the Python SDK
 
-PromptRouter comes with a built-in, lightweight client library:
+PromptRouter provides a lightweight client library (`sdk/client.py`):
 
 ```python
 from sdk import PromptRouterClient
@@ -145,66 +150,39 @@ from sdk import PromptRouterClient
 client = PromptRouterClient(base_url="http://127.0.0.1:8000")
 
 # 2. Route any task
-response = client.route("Write a python function to sort a list.")
+response = client.route("Write a Python function to sort a list using quicksort.")
 
 print(f"Routed Model : {response.routed_model}")
-print(f"Safety Score : {response.safety_score} / 5.0")
-print(f"Latency      : {response.latency_ms} ms")
-print(f"Cost         : ${response.estimated_cost}")
-print(f"Money Saved  : ${response.cost_saved}")
+print(f"Safety Score : {response.safety_score}")
+print(f"Cost Saved   : ${response.cost_saved}")
+print(f"Tokens Used  : {response.tokens_used}")
 ```
 
-Run the included demo:
+---
+
+## 🔬 Reproducing the Benchmarks
+
+All evaluation data and test runners are reproducible:
+
 ```bash
-python examples/demo.py
+# 1. Download RouterBench, LMSYS Arena, and deepset/prompt-injections
+python benchmark/download_dataset.py
+
+# 2. Run the prompt injection guardrail evaluation (500 live + remainder local)
+python benchmark/evaluate_guardrail.py
+
+# 3. Run the routing benchmark (700 live + remainder local + full 3k local)
+python benchmark/evaluate.py
 ```
+
+Results are saved to:
+- `benchmark/guardrail_benchmark_results.json`
+- `benchmark/benchmark_results_700_live.json`
+- `benchmark/benchmark_results_2300_local.json`
+- `benchmark/benchmark_results.json`
 
 ---
 
-## 🧪 Running the Benchmark Suite
+## 📄 License
 
-To reproduce the benchmark results:
-
-1. **Download Dataset:**
-   ```bash
-   python benchmark/download_dataset.py
-   ```
-2. **Run Benchmark:**
-   ```bash
-   # 1,000 random samples:
-   python benchmark/evaluate.py --samples 1000 --random
-
-   # Full 15,000 tasks:
-   python benchmark/evaluate.py --samples 15000
-   ```
-Results are saved to `benchmark/benchmark_results.json`.
-
----
-
-## 📂 Project Structure
-
-```text
-PromptRouter-Engine/
-├── benchmark/
-│   ├── download_dataset.py       # Downloads & summarizes 15k Dolly dataset
-│   ├── evaluate.py               # Benchmark runner with random sampling
-│   ├── benchmark_results_500.json   # Live API 500-sample results
-│   ├── benchmark_results_1000.json  # 1,000 random-sample results
-│   └── benchmark_results.json
-├── data/
-│   └── dolly_15k.jsonl           # 15,011 instruction dataset
-├── examples/
-│   └── demo.py                   # SDK usage demo with security test
-├── router/
-│   ├── config.py                 # Model pricing, 5-tier mapping, and security rubric
-│   ├── graph.py                  # LangGraph workflow with safety conditional edge
-│   ├── nodes.py                  # Safety guard, 5-tier classification, and generator
-│   └── state.py                  # TypedDict graph state definition
-├── sdk/
-│   ├── __init__.py
-│   └── client.py                 # Lightweight, typed Python client
-├── main.py                       # FastAPI application endpoints
-├── models.py                     # Pydantic request & response schemas
-├── requirements.txt
-└── README.md
-```
+This project is licensed under the [MIT License](LICENSE).
