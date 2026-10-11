@@ -13,13 +13,13 @@
   "costs": {
     "promptrouter_cost_usd": 0.1353,
     "flagship_baseline_cost_usd": 0.8487,
-    "cheapest_baseline_cost_usd": 0.0303,
+    "cheapest_baseline_cost_usd": 0.0255,
     "random_routing_cost_usd": 0.9176
   },
   "economic_savings": {
     "dollars_saved_vs_flagship": 0.7134,
     "percentage_reduction_vs_flagship": 84.06,
-    "cost_multiplier_vs_cheapest": 4.46,
+    "cost_multiplier_vs_cheapest": 5.31,
     "percentage_reduction_vs_random": 85.26
   },
   "model_distribution": {

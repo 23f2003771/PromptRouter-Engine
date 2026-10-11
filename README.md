@@ -28,20 +28,20 @@ PromptRouter implements an upstream security guardrail followed by dynamic routi
           │  & Zero Tokens │  └────────────┬────────────┘
           └────────────────┘               │
                                            ▼
-          ┌─────────────────────────────────────────────────────────────────────────┐
-          │                       5-Tier Model Routing Matrix                       │      
-          └─┬────────────────┬─────────────────┬─────────────────┬────────────────┬─┘
-            │                │                 │                 │                │
-            ▼                ▼                 ▼                 ▼                ▼
-    ┌───────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
-    │    Tier 1     │ │    Tier 2    │ │    Tier 3    │ │    Tier 4    │ │    Tier 5        │
-    │Heavy Reasoning│ │Flagship Work-│ │Performance   │ │Fast Factual  │ │Micro & Floor   │
-    │& Autonomous   │ │horses        │ │Mini Tier     │ │Knowledge     │ │Fallback        │
-    │deepseek-r1    │ │claude-5-     │ │gemini-3.8-   │ │deepseek-v4-  │ │gemini-2.5-     │
-    │o3-reasoning   │ │sonnet        │ │flash         │ │flash         │ │flash-lite      │
-    │claude-5-5-opus│ │gpt-5.6-terra │ │gpt-5.6-luna  │ │              │ │                  │
-    │($0.0012-$0.03)│ │($0.006-$0.007│ │($0.0007-$0.00│ │($0.00021/1k) │ │($0.00025/1k)     │
-    └───────────────┘ └──────────────┘ └──────────────┘ └──────────────┘ └──────────────────┘
+          ┌─────────────────────────────────────────────────────────────────────────────┐
+          │                          5-Tier Model Routing Matrix                        │      
+          └─┬────────────────┬───────────────────┬─────────────────┬──────────────────┬─┘
+            │                │                   │                 │                  │
+            ▼                ▼                   ▼                 ▼                  ▼
+    ┌───────────────┐ ┌───────────────┐ ┌─────────────────┐ ┌──────────────┐ ┌──────────────────┐
+    │    Tier 1     │ │    Tier 2     │ │    Tier 3       │ │    Tier 4    │ │    Tier 5        │
+    │Heavy Reasoning│ │Flagship Work- │ │Performance      │ │Fast Factual  │ │     Default      │
+    │& Autonomous   │ │horses         │ │Mini Tier        │ │Knowledge     │ │    Fallback      │
+    │deepseek-r1    │ │claude-5-      │ │gemini-3.8-      │ │deepseek-v4-  │ │   gemini-2.5-    │
+    │o3-reasoning   │ │sonnet         │ │flash            │ │flash         │ │   flash-lite     │
+    │claude-5-5-opus│ │gpt-5.6-terra  │ │gpt-5.6-luna     │ │              │ │                  │
+    │($0.0012-$0.03)│ │($0.006-$0.007)│ │($0.0007-$0.0023)│ │($0.00021/1k) │ │($0.00025/1k)     │
+    └───────────────┘ └───────────────┘ └─────────────────┘ └──────────────┘ └──────────────────┘
 ```
 
 1. **Adversarial Guardrail Node**: Evaluates prompt injection risk on a 1–5 scale. Prompts scoring > 2.0 are blocked immediately, preventing model compromise and consuming 0 downstream inference tokens.
@@ -55,7 +55,7 @@ PromptRouter implements an upstream security guardrail followed by dynamic routi
 
 ### 📋 5-Tier Routing Catalog
 
-PromptRouter defines 14 task categories in `router/config.py` mapped across 5 operational tiers and 12 modern LLMs:
+PromptRouter defines 14 task categories in `router/config.py` mapped across 5 operational tiers and 13 modern LLMs:
 
 | Tier | Category / Task Type | Target Model | Blended Rate / 1k Tokens | Capabilities & Scope |
 | :--- | :--- | :--- | :--- | :--- |
@@ -63,35 +63,39 @@ PromptRouter defines 14 task categories in `router/config.py` mapped across 5 op
 | **Tier 2: Flagship Workhorses** | `code`<br>`creative`<br>`factual_long_context`<br>`general_premium`<br>`agentic_professional` | `claude-5-sonnet`<br>`claude-5-sonnet`<br>`gemini-3.1-pro`<br>`gpt-5.6-terra`<br>`gpt-6.1-sol` | $0.0060<br>$0.0060<br>$0.0070<br>$0.0070<br>$0.0060 | Full-stack software engineering, nuanced editorial prose, 1M+ token document analysis, multi-turn consultation, and structured microservice tasks |
 | **Tier 3: Performance Mini** | `agentic_fast`<br>`general_budget` | `gemini-3.8-flash`<br>`gpt-5.6-luna` | $0.00225<br>$0.00070 | Low-latency agentic loops, high-velocity JSON schema extraction, structured entity tagging |
 | **Tier 4: High-Speed Factual** | `factual` | `deepseek-v4-flash` | $0.00021 | High-throughput factual QA, knowledge retrieval, definitions, short explanations |
-| **Tier 5: Micro & Floor Fallback** | `fallback_cheapest` | `gemini-2.5-flash-lite` | $0.00025 | Basic string reformatting, binary classification, unmatched fallback queries |
+| **Tier 5: Default Fallback** | `fallback_cheapest` | `gemini-2.5-flash-lite` | $0.00025 | Basic string reformatting, binary classification, unmatched fallback queries |
 
 ---
 
 ## 📊 Benchmark Evaluation Results
 
-Evaluated against **3,000 modern research tasks** sourced equally from:
-- **[RouterBench](https://huggingface.co/datasets/withmartian/routerbench) (1,500 tasks):** Formal reasoning (GSM8K), code generation (MBPP), factual knowledge (MMLU), and commonsense (Winogrande).
+> **Key Findings:** **Estimated 84.06% cost reduction vs. flagship** on 700 RouterBench/LMSYS queries; **100.0% precision, 56.78% recall** guardrail on 500 deepset prompts.
+
+Evaluated against modern research benchmarks:
+- **[RouterBench](https://huggingface.co/datasets/withmartian/routerbench) (1,500 tasks):** MMLU (584), HellaSwag (393), GSM8K arithmetic (302), ARC-Challenge (70), WinoGrande (57), MBPP coding (28), and 66 tasks across smaller domains (Chinese language/poetry, consensus summarization, abstract-to-title, bias detection, accounting audit, MT-Bench). Total = 1,500.
 - **[LMSYS Chatbot Arena](https://huggingface.co/datasets/routellm/gpt4_dataset) via RouteLLM (1,500 tasks):** Real-world user interactions reflecting authentic prompt distributions.
 
 ### Routing Performance Across Baselines
 
-| Metric | 700-Task Live API Run (350 RB + 350 LMSYS) | Full 3,000-Task Local Benchmark |
+| Metric | 700-Task Live API Run (350 RB + 350 LMSYS) | Full 3,000-Task Local Fallback |
 | :--- | :--- | :--- |
 | **Tasks Evaluated** | 700 queries | 3,000 queries |
-| **Routing Mode** | **Live TypeSafe Cloud API** | **Local Fast-Path Heuristic** |
+| **Routing Mode** | **Live TypeSafe Cloud API** (Semantic Router) | **Local Fast-Path Heuristic** (Static Fallback) |
 | **External API Calls Made** | **1,400 calls** (2 per prompt) | **0 calls** (In-Memory Engine) |
 | **Average Decision Latency** | **835.91 ms** (Public WAN Network) | **2.47 ms** (Local Overhead) |
 | **Throughput** | 7.1 QPS (6 worker threads) | **403.1 QPS** |
 | **Flagship Baseline (`gpt-5.6-terra` @ $0.0070/1k)** | $0.8487 | $3.6749 |
-| **Cheapest Baseline (`gemini-2.5-flash-lite` @ $0.00025/1k)** | $0.0303 | $0.1312 |
-| **Random Routing Baseline** | $0.9176 | $4.3616 |
+| **Cheapest Baseline (`deepseek-v4-flash` @ $0.00021/1k)** | $0.0255 | $0.1102 |
 | **PromptRouter Cost** | **$0.1353** | **$0.6931** |
 | **Dollars Saved vs Flagship** | **$0.7134** | **$2.9818** |
-| **Cost Reduction vs Flagship** | **84.06% SAVINGS** | **81.14% SAVINGS** |
-| **Cost Reduction vs Random** | **85.26% SAVINGS** | **84.11% SAVINGS** |
-| **Cost Multiplier vs Cheapest** | **4.46x** | **5.28x** |
+| **Cost Reduction vs Flagship** | **84.06% SAVINGS (Semantic router)** | **81.14% SAVINGS (Heuristic fallback, see analysis)** |
+| **Cost Multiplier vs Cheapest** | **5.31x** | **6.29x** |
 
-> **Quality vs. Cost Note:** The Always Cheapest baseline achieves a theoretical 96.4% savings on paper by sending all requests to a $0.00025/1k micro model, but degrades response quality on math proofs, complex coding, and nuanced reasoning. PromptRouter spends 5.28x of the absolute cheapest floor because it intentionally routes complex tasks to Tier 1 and Tier 2 models (`claude-5-sonnet`, `deepseek-r1`, `o3-reasoning`), striking a balance between output quality and cost.
+### 🔍 Critical Analysis: Semantic Router vs. Heuristic Fallback
+Cross-tabulating `RouterBench` sub-tasks against selected models reveals the difference between the **live semantic run (84.06%)** and the **3,000-task local fallback (81.14%)**:
+- **Fallback Keyword Vulnerability:** In the 3,000-task local run, **91.4% (276 / 302) of GSM8K grade-school math tasks fell through to `gemini-2.5-flash-lite`**. Static regex keywords looked for formal terms (*"proof"*, *"theorem"*, *"calculus"*) and failed to detect arithmetic word problems, defaulting them to the default fallback model.
+- **Semantic Routing Behavior:** Of the 75 GSM8K tasks in the live 350 RouterBench sample, the TypeSafe classifier routed 61 (81.3%) to `deepseek-v4-flash` ($0.00021/1k — the cheapest model in the catalog), 11 (14.7%) to `deepseek-r1`, and 3 (4.0%) to `gpt-5.6-luna`. The live router avoids the floor model on GSM8K but still sends most GSM8K tasks to the cheapest tier, so its 84.06% savings carries the same unverified-quality caveat as the local fallback. Whether `deepseek-v4-flash` maintains acceptable accuracy on multi-step arithmetic remains unmeasured without an LLM judge.
+
 
 ---
 
@@ -109,7 +113,7 @@ Evaluated against **662 labeled queries** from the Hugging Face research dataset
 | **False Positive Rate (FPR)** | **0.00%** | 0.00% |
 | **Average Decision Latency** | **405.83 ms** (Public WAN Network) | **0.02 ms** (Local Process) |
 
-**Key Research Finding:** Static keyword regex filters caught only **1.14%** of real injection attacks, failing on rephrased instructions, roleplays, and obfuscations. Semantic scoring via the TypeSafe API captured **56.78%** of attacks with **0.0% false positives** on benign inputs, demonstrating that semantic evaluation is required for effective prompt injection defense.
+**Key Research Finding:** Static keyword regex filters (6 patterns) caught only **1.14%** of real injection attacks, failing on rephrased instructions, roleplays, and obfuscations. Semantic scoring via the TypeSafe API captured **56.78%** of attacks with **0.0% false positives** on benign inputs, substantially outperforming static regex on this dataset.
 
 ---
 

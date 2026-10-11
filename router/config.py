@@ -58,8 +58,8 @@ MODEL_COSTS_PER_1K = {
     "gpt-5.6-luna": 0.00070,       # Blended from $0.20 In / $1.20 Out
     
     # Extreme Budget & Open-Weights Tier (< $0.40 blended per 1M tokens)
-    "deepseek-v4-flash": 0.00021,  # Blended from $0.14 In / $0.28 Out
-    "gemini-2.5-flash-lite": 0.00025 # Blended from $0.10 In / $0.40 Out (Cheapest baseline)
+    "deepseek-v4-flash": 0.00021,  # Blended from $0.14 In / $0.28 Out (Cheapest model)
+    "gemini-2.5-flash-lite": 0.00025 # Blended from $0.10 In / $0.40 Out (Floor fallback)
 }
 
 
