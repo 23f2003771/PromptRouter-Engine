@@ -55,7 +55,7 @@ PromptRouter configures 10 granular task criteria in `router/config.py` mapped a
 | Tier | Category / Task Type | Target Model | Blended Rate / 1k Tokens | Capabilities & Scope |
 | :--- | :--- | :--- | :--- | :--- |
 | **Tier 1: Heavy Reasoning** | `reasoning_heavy`<br>`reasoning_premium` | `deepseek-r1`<br>`o3-reasoning` | $0.0012<br>$0.0250 | Complex mathematical proofs, deep algorithmic architecture, autonomous agent planning |
-| **Tier 2: Flagship Workhorses** | `code`<br>`creative`<br>`factual_long_context`<br>`general_premium` | `claude-5-sonnet`<br>`claude-5-sonnet`<br>`gemini-3.1-pro`<br>`gpt-5.6-terra` | $0.0040<br>$0.0040<br>$0.0045<br>$0.0045 | Full-stack software engineering, nuanced editorial prose, 1M+ token document analysis, complex multi-turn dialogue |
+| **Tier 2: Flagship Workhorses** | `code`<br>`creative`<br>`factual_long_context`<br>`general_premium` | `claude-5-sonnet`<br>`gemini-3.1-pro`<br>`gpt-5.6-terra` | $0.0040<br>$0.0040<br>$0.0045<br>$0.0045 | Full-stack software engineering, nuanced editorial prose, 1M+ token document analysis, complex multi-turn dialogue |
 | **Tier 3: Performance Mini** | `agentic_fast`<br>`general_budget` | `gemini-3.8-flash`<br>`gpt-5.6-luna` | $0.0015<br>$0.00045 | Low-latency agentic loops, high-velocity JSON schema extraction, structured entity tagging |
 | **Tier 4: High-Speed Factual** | `factual` | `deepseek-v4-flash` | $0.00020 | High-throughput factual QA, knowledge retrieval, short summarization |
 | **Tier 5: Micro & Floor Fallback** | `fallback_cheapest` | `gemini-2.5-flash-lite` | $0.00018 | Basic string reformatting, binary classification, trivial single-turn text queries |

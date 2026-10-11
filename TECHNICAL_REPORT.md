@@ -73,7 +73,7 @@ While naive gateways rely on rigid binary heuristics (e.g., small vs. large), Pr
 | Tier | Category / Task Type | Target Model | Blended Rate / 1k Tokens | Capabilities & Scope |
 | :--- | :--- | :--- | :--- | :--- |
 | **Tier 1: Heavy Reasoning** | `reasoning_heavy`<br>`reasoning_premium` | `deepseek-r1`<br>`o3-reasoning` | $0.0012<br>$0.0250 | Complex mathematical proofs, deep algorithmic architecture, autonomous agent planning |
-| **Tier 2: Flagship Workhorses** | `code`<br>`creative`<br>`factual_long_context`<br>`general_premium` | `claude-5-sonnet`<br>`claude-5-sonnet`<br>`gemini-3.1-pro`<br>`gpt-5.6-terra` | $0.0040<br>$0.0040<br>$0.0045<br>$0.0045 | Full-stack software engineering, nuanced editorial prose, 1M+ token document analysis, complex multi-turn dialogue |
+| **Tier 2: Flagship Workhorses** | `code`<br>`creative`<br>`factual_long_context`<br>`general_premium` | `claude-5-sonnet`<br>`gemini-3.1-pro`<br>`gpt-5.6-terra` | $0.0040<br>$0.0040<br>$0.0045<br>$0.0045 | Full-stack software engineering, nuanced editorial prose, 1M+ token document analysis, complex multi-turn dialogue |
 | **Tier 3: Performance Mini** | `agentic_fast`<br>`general_budget` | `gemini-3.8-flash`<br>`gpt-5.6-luna` | $0.0015<br>$0.00045 | Low-latency agentic loops, high-velocity JSON schema extraction, structured entity tagging |
 | **Tier 4: High-Speed Factual** | `factual` | `deepseek-v4-flash` | $0.00020 | High-throughput factual QA, knowledge retrieval, short summarization |
 | **Tier 5: Micro & Floor Fallback** | `fallback_cheapest` | `gemini-2.5-flash-lite` | $0.00018 | Basic string reformatting, binary classification, trivial single-turn text queries |
@@ -174,25 +174,28 @@ The SDK eliminates manual HTTP parameter construction and standardizes structure
 
 ---
 
-## 6. Production Deployment & Security Hardening
+## 6. Fault Tolerance & Security Implementation
 
-Deploying an LLM orchestration gateway in production requires robust infrastructure patterns to ensure high availability, multi-tenant protection, and resilience against adversarial volumetric exhaustion:
+PromptRouter’s reliability and defensive capabilities are implemented directly within its codebase across three distinct architectural layers:
 
-### 6.1 Asynchronous ASGI Architecture & Concurrency
-PromptRouter is packaged as an asynchronous ASGI service (FastAPI / Uvicorn). In production environments:
-- **Reverse Proxy Ingress:** Deployed behind NGINX or Cloudflare to handle TLS termination, DDoS mitigation, and HTTP keep-alive connection pooling.
-- **Worker Scaling:** Horizontal scaling via multi-worker Uvicorn processes (`uvicorn --workers 4 --loop uvloop`) ensures non-blocking I/O across concurrent client connections.
+### 6.1 Asynchronous Service Architecture
+PromptRouter exposes an asynchronous ASGI service built on FastAPI (`main.py`):
+- **Typed Ingress/Egress:** Endpoints (`/health` and `/api/route`) leverage Pydantic models (`TaskRequest` and `RoutingResponse`) to validate incoming payloads and structure egress telemetry.
+- **In-Process Pipeline Execution:** Invocations pass directly into the compiled LangGraph state machine, returning routing decisions, token usage, cost estimates, and security audit scores in a single non-blocking event cycle.
 
-### 6.2 Denial-of-Wallet (DoW) Defense & Rate Limiting
-Public or multi-tenant LLM endpoints are vulnerable to "Denial-of-Wallet" attacks where automated bots exhaust cloud provider credit quotas. PromptRouter mitigates this through three distinct barriers:
-1. **Pre-Execution Guardrail:** Upstream prompt injection scanning terminates malicious payloads before token serialization or model invocation occurs.
-2. **Token-Bucket Throttling:** Client IP and API key-based rate limits enforce maximum tokens-per-minute (TPM) and requests-per-minute (RPM).
-3. **Simulation & Dry-Run Mode:** For staging, automated testing, and interactive demonstration sandboxes, PromptRouter supports a zero-cost simulation execution path. This exercises classification, token counting, and routing heuristics in under 2ms with zero downstream API billing overhead.
+### 6.2 Pre-Execution Adversarial Mitigation & Resource Protection
+Rather than directly dispatching raw user inputs to downstream LLMs, PromptRouter enforces entry-level boundary defense in `router/nodes.py`:
+- **Zero-Token Attack Interception:** Prompts evaluated with an injection risk score exceeding the threshold ($S > 2.0$) are diverted by the conditional graph edge (`route_safety`) directly to `block_request`.
+- **Financial Defense:** Malicious payloads are halted before downstream model dispatch, consuming zero downstream inference tokens and preventing resource draining from adversarial exploitation.
 
-### 6.3 Resiliency & Circuit Breakers
-To prevent cascade failures if an upstream model provider experiences elevated error rates (HTTP 429 / 503):
-- **Dynamic Fallbacks:** If a Tier 1 or Tier 2 provider times out or throttles, the router falls back gracefully to secondary models within the same intelligence tier.
-- **Circuit Breakers:** Repeated downstream timeouts trigger circuit breakers, preserving end-user response availability without queuing unserviceable requests.
+### 6.3 Graceful Offline & Network Failover Architecture
+To ensure continuous operation without dependency lock-in or vulnerability to external API outages:
+- **Heuristic Failover:** In `router/nodes.py`, external calls to TypeSafe SDK (`check_safety` and `classify_task`) are wrapped in explicit exception-handling blocks. If network connectivity fails, API quotas are exhausted, or external requests raise exceptions, the router automatically falls back to compiled in-memory regular expressions and word-boundary keyword heuristics.
+- **Zero-Downtime Guarantee:** The gateway never propagates third-party API exceptions or unhandled 500 errors to client callers, ensuring all valid requests continue to be categorized and dispatched seamlessly.
+
+### 6.4 High-Throughput Simulation Mode
+For local regression testing, CI/CD validation, and zero-cost performance evaluation:
+- PromptRouter provides a dedicated evaluation suite (`benchmark/evaluate.py`) that operates in high-throughput fast-path mode. This executes the entire graph state machine, token calculation, and economic attribution locally over thousands of dataset queries in seconds with zero API billing overhead.
 
 ---
 
